@@ -1,79 +1,127 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { apiService } from '../../services';
 
 const AdminBlog = () => {
-  const [posts] = useState([
-    {
-      id: 1,
-      title: 'Building Scalable React Applications',
-      slug: 'building-scalable-react-applications',
-      excerpt: 'Learn how to structure and organize your React applications for scalability and maintainability.',
-      content: 'Full blog post content here...',
-      status: 'published',
-      category: 'React',
-      tags: ['React', 'JavaScript', 'Architecture'],
-      author: 'Omwansa Arnold',
-      publishedAt: '2024-01-25T10:00:00Z',
-      createdAt: '2024-01-24T15:30:00Z',
-      updatedAt: '2024-01-25T10:00:00Z',
-      readTime: '5 min read',
-      views: 1250
-    },
-    {
-      id: 2,
-      title: 'Modern CSS Techniques for Better UX',
-      slug: 'modern-css-techniques-better-ux',
-      excerpt: 'Explore advanced CSS techniques that can significantly improve user experience and performance.',
-      content: 'Full blog post content here...',
-      status: 'published',
-      category: 'CSS',
-      tags: ['CSS', 'UX', 'Performance'],
-      author: 'Omwansa Arnold',
-      publishedAt: '2024-01-20T14:00:00Z',
-      createdAt: '2024-01-19T11:20:00Z',
-      updatedAt: '2024-01-20T14:00:00Z',
-      readTime: '7 min read',
-      views: 890
-    },
-    {
-      id: 3,
-      title: 'Node.js Best Practices for Production',
-      slug: 'nodejs-best-practices-production',
-      excerpt: 'Essential practices and patterns for deploying Node.js applications in production environments.',
-      content: 'Full blog post content here...',
-      status: 'draft',
-      category: 'Node.js',
-      tags: ['Node.js', 'Backend', 'Production'],
-      author: 'Omwansa Arnold',
-      publishedAt: null,
-      createdAt: '2024-01-28T09:15:00Z',
-      updatedAt: '2024-01-28T09:15:00Z',
-      readTime: '6 min read',
-      views: 0
-    }
-  ]);
-
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingPost, setEditingPost] = useState(null);
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [filter, setFilter] = useState('all');
+  const [formData, setFormData] = useState({
+    title: '',
+    excerpt: '',
+    content: '',
+    published: false,
+    featured_image: '',
+    tags: ''
+  });
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
-  const filteredPosts = filterStatus === 'all' 
-    ? posts 
-    : posts.filter(post => post.status === filterStatus);
+  useEffect(() => {
+    fetchPosts();
+  }, []);
+
+  const fetchPosts = async () => {
+    try {
+      setLoading(true);
+      // Get all posts (both published and drafts) for admin
+      const data = await apiService.getBlogPosts({ published: 'all' });
+      const list = Array.isArray(data) ? data : [];
+      setPosts(list);
+    } catch (error) {
+      console.error('Error fetching blog posts:', error);
+      setError('Failed to fetch blog posts');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleEdit = (post) => {
     setEditingPost(post);
+    setFormData({
+      title: post.title || '',
+      excerpt: post.excerpt || '',
+      content: post.content || '',
+      published: post.published || false,
+      featured_image: post.featured_image || '',
+      tags: post.tags ? post.tags.join(', ') : ''
+    });
     setShowModal(true);
   };
 
-  const handleDelete = (postId) => {
+  const handleDelete = async (postId) => {
     if (window.confirm('Are you sure you want to delete this blog post?')) {
-      console.log('Delete post:', postId);
+      try {
+        await apiService.deleteBlogPost(postId);
+        setPosts(posts.filter(p => p.id !== postId));
+        setSuccess('Blog post deleted successfully');
+        setTimeout(() => setSuccess(''), 3000);
+      } catch (error) {
+        console.error('Error deleting blog post:', error);
+        setError('Failed to delete blog post');
+        setTimeout(() => setError(''), 3000);
+      }
     }
   };
 
-  const handlePublish = (postId) => {
-    console.log('Publish post:', postId);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      setError('');
+      setSuccess('');
+
+      const postData = {
+        ...formData,
+        tags: formData.tags.split(',').map(t => t.trim()).filter(t => t)
+      };
+
+      if (editingPost) {
+        await apiService.updateBlogPost(editingPost.id, postData);
+        setSuccess('Blog post updated successfully');
+        // Refresh the posts list to get updated data
+        fetchPosts();
+      } else {
+        await apiService.createBlogPost(postData);
+        setSuccess('Blog post created successfully');
+        // Refresh the posts list to get the new post with proper ID
+        fetchPosts();
+      }
+
+      setShowModal(false);
+      setEditingPost(null);
+      setFormData({
+        title: '',
+        excerpt: '',
+        content: '',
+        published: false,
+        featured_image: '',
+        tags: ''
+      });
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (error) {
+      console.error('Error saving blog post:', error);
+      setError('Failed to save blog post');
+      setTimeout(() => setError(''), 3000);
+    }
   };
+
+  const handleInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  const safePosts = Array.isArray(posts) ? posts : [];
+  const filteredPosts = filter === 'all' 
+    ? safePosts 
+    : safePosts.filter(post => {
+        if (filter === 'published') return post.published === true;
+        if (filter === 'draft') return post.published === false;
+        return true;
+      });
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -116,14 +164,26 @@ const AdminBlog = () => {
         </button>
       </div>
 
+      {/* Error/Success Messages */}
+      {error && (
+        <div className="bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-200 px-4 py-3 rounded-lg mb-4">
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="bg-green-100 dark:bg-green-900 border border-green-400 dark:border-green-700 text-green-700 dark:text-green-200 px-4 py-3 rounded-lg mb-4">
+          {success}
+        </div>
+      )}
+
       {/* Filter Buttons */}
       <div className="flex flex-wrap gap-2">
         {['all', 'published', 'draft', 'archived'].map((status) => (
           <button
             key={status}
-            onClick={() => setFilterStatus(status)}
+            onClick={() => setFilter(status)}
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              filterStatus === status
+              filter === status
                 ? 'bg-blue-600 dark:bg-blue-700 text-white'
                 : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
             }`}
@@ -131,7 +191,11 @@ const AdminBlog = () => {
             {status.charAt(0).toUpperCase() + status.slice(1)}
             {status !== 'all' && (
               <span className="ml-2 px-2 py-1 text-xs bg-gray-200 dark:bg-gray-600 rounded-full">
-                {posts.filter(p => p.status === status).length}
+                {safePosts.filter(p => {
+                  if (status === 'published') return p.published === true;
+                  if (status === 'draft') return p.published === false;
+                  return true;
+                }).length}
               </span>
             )}
           </button>
@@ -144,7 +208,7 @@ const AdminBlog = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Posts</p>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white">{posts.length}</p>
+              <p className="text-3xl font-bold text-gray-900 dark:text-white">{safePosts.length}</p>
             </div>
             <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
               <span className="text-2xl">📝</span>
@@ -157,7 +221,7 @@ const AdminBlog = () => {
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Published</p>
               <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                {posts.filter(p => p.status === 'published').length}
+                {safePosts.filter(p => p.published).length}
               </p>
             </div>
             <div className="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
@@ -171,7 +235,7 @@ const AdminBlog = () => {
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Drafts</p>
               <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                {posts.filter(p => p.status === 'draft').length}
+                {safePosts.filter(p => !p.published).length}
               </p>
             </div>
             <div className="w-12 h-12 bg-yellow-100 dark:bg-yellow-900 rounded-lg flex items-center justify-center">
@@ -185,7 +249,7 @@ const AdminBlog = () => {
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Views</p>
               <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                {posts.reduce((acc, post) => acc + post.views, 0).toLocaleString()}
+                {safePosts.reduce((acc, post) => acc + (Number(post.views) || 0), 0).toLocaleString()}
               </p>
             </div>
             <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
@@ -202,7 +266,21 @@ const AdminBlog = () => {
         </div>
         
         <div className="divide-y divide-gray-200 dark:divide-gray-700">
-          {filteredPosts.map((post) => (
+          {loading ? (
+            <div className="p-12 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600 dark:text-gray-400">Loading blog posts...</p>
+            </div>
+          ) : filteredPosts.length === 0 ? (
+            <div className="p-12 text-center">
+              <div className="text-gray-500 dark:text-gray-400">
+                <div className="text-4xl mb-4">📝</div>
+                <p>No blog posts found</p>
+                <p className="text-sm">Create your first blog post to get started</p>
+              </div>
+            </div>
+          ) : (
+            filteredPosts.map((post) => (
             <div key={post.id} className="p-6 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
@@ -220,19 +298,20 @@ const AdminBlog = () => {
                   </p>
 
                   <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400 mb-3">
-                    <span>📂 {post.category}</span>
-                    <span>⏱️ {post.readTime}</span>
-                    <span>👁️ {post.views} views</span>
-                    <span>📅 {formatDate(post.publishedAt)}</span>
+                    <span>👁️ {post.views || 0} views</span>
+                    <span>📅 {formatDate(post.published_at)}</span>
+                    <span>✍️ {post.author?.first_name} {post.author?.last_name}</span>
                   </div>
 
-                  <div className="flex flex-wrap gap-2">
-                    {post.tags.map((tag, index) => (
-                      <span key={index} className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
+                  {Array.isArray(post.tags) && post.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {post.tags.map((tag, index) => (
+                        <span key={index} className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex flex-col space-y-2 ml-4">
@@ -242,9 +321,20 @@ const AdminBlog = () => {
                   >
                     Edit
                   </button>
-                  {post.status === 'draft' && (
+                  {!post.published && (
                     <button
-                      onClick={() => handlePublish(post.id)}
+                      onClick={async () => {
+                        try {
+                          await apiService.updateBlogPost(post.id, { ...post, published: true });
+                          setSuccess('Blog post published successfully');
+                          fetchPosts(); // Refresh the list
+                          setTimeout(() => setSuccess(''), 3000);
+                        } catch (error) {
+                          console.error('Error publishing blog post:', error);
+                          setError('Failed to publish blog post');
+                          setTimeout(() => setError(''), 3000);
+                        }
+                      }}
                       className="px-4 py-2 bg-green-600 dark:bg-green-700 text-white rounded-lg text-sm font-medium hover:bg-green-700 dark:hover:bg-green-600 transition-colors"
                     >
                       Publish
@@ -259,7 +349,8 @@ const AdminBlog = () => {
                 </div>
               </div>
             </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 
@@ -283,28 +374,48 @@ const AdminBlog = () => {
                 </button>
               </div>
 
-              <form className="space-y-6">
+              <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Post Title
+                    Post Title *
                   </label>
                   <input
                     type="text"
-                    defaultValue={editingPost?.title || ''}
+                    name="title"
+                    value={formData.title}
+                    onChange={handleInputChange}
                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     placeholder="Enter blog post title"
+                    required
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Excerpt
+                    Featured Image URL
+                  </label>
+                  <input
+                    type="url"
+                    name="featured_image"
+                    value={formData.featured_image}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    placeholder="https://example.com/image.jpg"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Excerpt *
                   </label>
                   <textarea
                     rows={3}
-                    defaultValue={editingPost?.excerpt || ''}
+                    name="excerpt"
+                    value={formData.excerpt}
+                    onChange={handleInputChange}
                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     placeholder="Enter a brief excerpt for the post"
+                    required
                   />
                 </div>
 
@@ -315,24 +426,25 @@ const AdminBlog = () => {
                     </label>
                     <input
                       type="text"
-                      defaultValue={editingPost?.category || ''}
+                      name="category"
+                      value={formData.category}
+                      onChange={handleInputChange}
                       className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                       placeholder="e.g., React, CSS, Node.js"
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Status
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      name="published"
+                      checked={formData.published}
+                      onChange={handleInputChange}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <label className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+                      Published
                     </label>
-                    <select
-                      defaultValue={editingPost?.status || 'draft'}
-                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    >
-                      <option value="draft">Draft</option>
-                      <option value="published">Published</option>
-                      <option value="archived">Archived</option>
-                    </select>
                   </div>
                 </div>
 
@@ -342,7 +454,9 @@ const AdminBlog = () => {
                   </label>
                   <input
                     type="text"
-                    defaultValue={editingPost?.tags?.join(', ') || ''}
+                    name="tags"
+                    value={formData.tags}
+                    onChange={handleInputChange}
                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     placeholder="React, JavaScript, Tutorial"
                   />
@@ -350,13 +464,16 @@ const AdminBlog = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Content
+                    Content *
                   </label>
                   <textarea
                     rows={10}
-                    defaultValue={editingPost?.content || ''}
+                    name="content"
+                    value={formData.content}
+                    onChange={handleInputChange}
                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     placeholder="Write your blog post content here..."
+                    required
                   />
                 </div>
 
@@ -366,6 +483,14 @@ const AdminBlog = () => {
                     onClick={() => {
                       setShowModal(false);
                       setEditingPost(null);
+                      setFormData({
+                        title: '',
+                        excerpt: '',
+                        content: '',
+                        published: false,
+                        featured_image: '',
+                        tags: ''
+                      });
                     }}
                     className="px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                   >

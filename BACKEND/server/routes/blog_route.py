@@ -38,6 +38,7 @@ def get_blogs():
         query = query.filter_by(published=True)
     elif published.lower() == 'false':
         query = query.filter_by(published=False)
+    # If published='all', don't filter by published status
     
     # Filter by tag if provided
     if tag:

@@ -1,55 +1,122 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { apiService } from '../../services';
 
 const AdminExperience = () => {
-  const [experiences] = useState([
-    {
-      id: 1,
-      company: 'Tech Solutions Inc.',
-      position: 'Senior Full Stack Developer',
-      location: 'Nairobi, Kenya',
-      startDate: '2022-01-01',
-      endDate: null,
-      current: true,
-      description: 'Led development of scalable web applications using React, Node.js, and cloud technologies. Mentored junior developers and implemented best practices.',
-      responsibilities: [
-        'Developed and maintained web applications',
-        'Led a team of 5 developers',
-        'Implemented CI/CD pipelines',
-        'Conducted code reviews and mentoring'
-      ],
-      technologies: ['React', 'Node.js', 'AWS', 'Docker', 'PostgreSQL']
-    },
-    {
-      id: 2,
-      company: 'Digital Agency Pro',
-      position: 'Full Stack Developer',
-      location: 'Remote',
-      startDate: '2020-06-01',
-      endDate: '2021-12-31',
-      current: false,
-      description: 'Built responsive web applications and RESTful APIs for various clients. Collaborated with design teams to implement pixel-perfect UIs.',
-      responsibilities: [
-        'Developed client websites and applications',
-        'Created RESTful APIs',
-        'Collaborated with design teams',
-        'Optimized application performance'
-      ],
-      technologies: ['React', 'Express.js', 'MongoDB', 'Tailwind CSS']
-    }
-  ]);
-
+  const [experiences, setExperiences] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingExperience, setEditingExperience] = useState(null);
+  const [formData, setFormData] = useState({
+    company: '',
+    position: '',
+    location: '',
+    start_date: '',
+    end_date: '',
+    current: false,
+    description: '',
+    responsibilities: '',
+    technologies: ''
+  });
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  useEffect(() => {
+    fetchExperiences();
+  }, []);
+
+  const fetchExperiences = async () => {
+    try {
+      setLoading(true);
+      const data = await apiService.getExperiences();
+      setExperiences(data);
+    } catch (error) {
+      console.error('Error fetching experiences:', error);
+      setError('Failed to fetch experiences');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleEdit = (experience) => {
     setEditingExperience(experience);
+    setFormData({
+      company: experience.company || '',
+      position: experience.position || '',
+      location: experience.location || '',
+      start_date: experience.start_date || '',
+      end_date: experience.end_date || '',
+      current: experience.current || false,
+      description: experience.description || '',
+      responsibilities: experience.responsibilities || '',
+      technologies: experience.technologies || ''
+    });
     setShowModal(true);
   };
 
-  const handleDelete = (experienceId) => {
+  const handleDelete = async (experienceId) => {
     if (window.confirm('Are you sure you want to delete this experience?')) {
-      console.log('Delete experience:', experienceId);
+      try {
+        await apiService.deleteExperience(experienceId);
+        setExperiences(experiences.filter(e => e.id !== experienceId));
+        setSuccess('Experience deleted successfully');
+        setTimeout(() => setSuccess(''), 3000);
+      } catch (error) {
+        console.error('Error deleting experience:', error);
+        setError('Failed to delete experience');
+        setTimeout(() => setError(''), 3000);
+      }
     }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      setError('');
+      setSuccess('');
+
+      const experienceData = {
+        ...formData,
+        responsibilities: formData.responsibilities.split('\n').filter(r => r.trim()),
+        technologies: formData.technologies.split(',').map(t => t.trim()).filter(t => t)
+      };
+
+      if (editingExperience) {
+        await apiService.updateExperience(editingExperience.id, experienceData);
+        setExperiences(experiences.map(e => e.id === editingExperience.id ? { ...e, ...experienceData } : e));
+        setSuccess('Experience updated successfully');
+      } else {
+        const newExperience = await apiService.createExperience(experienceData);
+        setExperiences([newExperience, ...experiences]);
+        setSuccess('Experience created successfully');
+      }
+
+      setShowModal(false);
+      setEditingExperience(null);
+      setFormData({
+        company: '',
+        position: '',
+        location: '',
+        start_date: '',
+        end_date: '',
+        current: false,
+        description: '',
+        responsibilities: '',
+        technologies: ''
+      });
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (error) {
+      console.error('Error saving experience:', error);
+      setError('Failed to save experience');
+      setTimeout(() => setError(''), 3000);
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
   };
 
   const formatDate = (dateString) => {
@@ -122,9 +189,35 @@ const AdminExperience = () => {
         </div>
       </div>
 
+      {/* Error/Success Messages */}
+      {error && (
+        <div className="bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-200 px-4 py-3 rounded-lg mb-4">
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="bg-green-100 dark:bg-green-900 border border-green-400 dark:border-green-700 text-green-700 dark:text-green-200 px-4 py-3 rounded-lg mb-4">
+          {success}
+        </div>
+      )}
+
       {/* Experience List */}
       <div className="space-y-6">
-        {experiences.map((experience) => (
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600 dark:text-gray-400">Loading experiences...</p>
+          </div>
+        ) : experiences.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="text-gray-500 dark:text-gray-400">
+              <div className="text-4xl mb-4">💼</div>
+              <p>No experiences found</p>
+              <p className="text-sm">Add your first work experience to get started</p>
+            </div>
+          </div>
+        ) : (
+          experiences.map((experience) => (
           <div key={experience.id} className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
             <div className="flex items-start justify-between mb-4">
               <div className="flex-1">
@@ -142,29 +235,33 @@ const AdminExperience = () => {
                 <div className="flex items-center space-x-4 text-gray-600 dark:text-gray-300 mb-3">
                   <span className="font-medium">{experience.company}</span>
                   <span>📍 {experience.location}</span>
-                  <span>📅 {formatDate(experience.startDate)} - {formatDate(experience.endDate)}</span>
+                  <span>📅 {formatDate(experience.start_date)} - {formatDate(experience.end_date)}</span>
                 </div>
 
                 <p className="text-gray-600 dark:text-gray-300 mb-4">
                   {experience.description}
                 </p>
 
-                <div className="mb-4">
-                  <h4 className="font-medium text-gray-900 dark:text-white mb-2">Key Responsibilities:</h4>
-                  <ul className="list-disc list-inside space-y-1 text-sm text-gray-600 dark:text-gray-300">
-                    {experience.responsibilities.map((responsibility, index) => (
-                      <li key={index}>{responsibility}</li>
-                    ))}
-                  </ul>
-                </div>
+                {Array.isArray(experience.responsibilities) && experience.responsibilities.length > 0 && (
+                  <div className="mb-4">
+                    <h4 className="font-medium text-gray-900 dark:text-white mb-2">Key Responsibilities:</h4>
+                    <ul className="list-disc list-inside space-y-1 text-sm text-gray-600 dark:text-gray-300">
+                      {experience.responsibilities.map((responsibility, index) => (
+                        <li key={index}>{responsibility}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
-                <div className="flex flex-wrap gap-2">
-                  {experience.technologies.map((tech, index) => (
-                    <span key={index} className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded">
-                      {tech}
-                    </span>
-                  ))}
-                </div>
+                {Array.isArray(experience.technologies) && experience.technologies.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {experience.technologies.map((tech, index) => (
+                      <span key={index} className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded">
+                        {tech}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-col space-y-2 ml-4">
@@ -183,7 +280,8 @@ const AdminExperience = () => {
               </div>
             </div>
           </div>
-        ))}
+          ))
+        )}
       </div>
 
       {/* Modal for Add/Edit Experience */}
@@ -206,29 +304,35 @@ const AdminExperience = () => {
                 </button>
               </div>
 
-              <form className="space-y-6">
+              <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Company
+                      Company *
                     </label>
                     <input
                       type="text"
-                      defaultValue={editingExperience?.company || ''}
+                      name="company"
+                      value={formData.company}
+                      onChange={handleInputChange}
                       className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                       placeholder="Company name"
+                      required
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Position
+                      Position *
                     </label>
                     <input
                       type="text"
-                      defaultValue={editingExperience?.position || ''}
+                      name="position"
+                      value={formData.position}
+                      onChange={handleInputChange}
                       className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                       placeholder="Job title"
+                      required
                     />
                   </div>
                 </div>
@@ -239,7 +343,9 @@ const AdminExperience = () => {
                   </label>
                   <input
                     type="text"
-                    defaultValue={editingExperience?.location || ''}
+                    name="location"
+                    value={formData.location}
+                    onChange={handleInputChange}
                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     placeholder="City, Country"
                   />
@@ -248,12 +354,15 @@ const AdminExperience = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Start Date
+                      Start Date *
                     </label>
                     <input
                       type="date"
-                      defaultValue={editingExperience?.startDate || ''}
+                      name="start_date"
+                      value={formData.start_date}
+                      onChange={handleInputChange}
                       className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      required
                     />
                   </div>
 
@@ -263,8 +372,11 @@ const AdminExperience = () => {
                     </label>
                     <input
                       type="date"
-                      defaultValue={editingExperience?.endDate || ''}
-                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      name="end_date"
+                      value={formData.end_date}
+                      onChange={handleInputChange}
+                      disabled={formData.current}
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
                     />
                   </div>
                 </div>
@@ -272,7 +384,9 @@ const AdminExperience = () => {
                 <div className="flex items-center">
                   <input
                     type="checkbox"
-                    defaultChecked={editingExperience?.current || false}
+                    name="current"
+                    checked={formData.current}
+                    onChange={handleInputChange}
                     className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                   />
                   <label className="ml-2 text-sm font-medium text-gray-900 dark:text-white">
@@ -286,9 +400,25 @@ const AdminExperience = () => {
                   </label>
                   <textarea
                     rows={3}
-                    defaultValue={editingExperience?.description || ''}
+                    name="description"
+                    value={formData.description}
+                    onChange={handleInputChange}
                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     placeholder="Brief description of your role and achievements"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Responsibilities (one per line)
+                  </label>
+                  <textarea
+                    rows={4}
+                    name="responsibilities"
+                    value={formData.responsibilities}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    placeholder="Developed and maintained web applications&#10;Led a team of 5 developers&#10;Implemented CI/CD pipelines"
                   />
                 </div>
 
@@ -298,7 +428,9 @@ const AdminExperience = () => {
                   </label>
                   <input
                     type="text"
-                    defaultValue={editingExperience?.technologies?.join(', ') || ''}
+                    name="technologies"
+                    value={formData.technologies}
+                    onChange={handleInputChange}
                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     placeholder="React, Node.js, AWS, Docker"
                   />
@@ -310,6 +442,17 @@ const AdminExperience = () => {
                     onClick={() => {
                       setShowModal(false);
                       setEditingExperience(null);
+                      setFormData({
+                        company: '',
+                        position: '',
+                        location: '',
+                        start_date: '',
+                        end_date: '',
+                        current: false,
+                        description: '',
+                        responsibilities: '',
+                        technologies: ''
+                      });
                     }}
                     className="px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                   >

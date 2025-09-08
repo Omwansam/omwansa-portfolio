@@ -1,24 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { apiService } from '../../services';
 
 const AdminProfile = () => {
   const [profile, setProfile] = useState({
-    firstName: 'Omwansa',
-    lastName: 'Arnold',
-    email: 'omwansa.arnold@example.com',
-    phone: '+1 (555) 123-4567',
-    title: 'Full Stack Developer',
-    bio: 'Passionate full-stack developer with expertise in React, Node.js, and modern web technologies. I love building scalable applications and solving complex problems.',
-    location: 'Nairobi, Kenya',
-    website: 'https://omwansaarnold.com',
-    github: 'https://github.com/omwansaarnold',
-    linkedin: 'https://linkedin.com/in/omwansaarnold',
-    twitter: 'https://twitter.com/omwansaarnold',
-    avatar: null,
-    resume: null
+    first_name: '',
+    last_name: '',
+    email: '',
+    phone: '',
+    title: '',
+    bio: '',
+    location: '',
+    website_url: '',
+    github_url: '',
+    linkedin_url: '',
+    twitter_url: '',
+    avatar_url: ''
   });
 
   const [activeTab, setActiveTab] = useState('personal');
   const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const tabs = [
     { id: 'personal', name: 'Personal Info', icon: '👤' },
@@ -27,6 +31,23 @@ const AdminProfile = () => {
     { id: 'preferences', name: 'Preferences', icon: '⚙️' }
   ];
 
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const fetchProfile = async () => {
+    try {
+      setLoading(true);
+      const data = await apiService.getProfile();
+      setProfile(data);
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      setError('Failed to fetch profile');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleInputChange = (field, value) => {
     setProfile(prev => ({
       ...prev,
@@ -34,9 +55,22 @@ const AdminProfile = () => {
     }));
   };
 
-  const handleSave = () => {
-    console.log('Saving profile:', profile);
-    // Here you would typically make an API call to save the profile
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      setError('');
+      setSuccess('');
+
+      await apiService.updateProfile(profile);
+      setSuccess('Profile updated successfully');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      setError('Failed to save profile');
+      setTimeout(() => setError(''), 3000);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleAvatarUpload = (event) => {
@@ -53,7 +87,7 @@ const AdminProfile = () => {
         <div className="relative">
           <div className="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center">
             <span className="text-white font-bold text-2xl">
-              {profile.firstName[0]}{profile.lastName[0]}
+              {(profile.first_name?.[0] || '')}{(profile.last_name?.[0] || '')}
             </span>
           </div>
           <button
@@ -65,7 +99,7 @@ const AdminProfile = () => {
         </div>
         <div>
           <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-            {profile.firstName} {profile.lastName}
+            {profile.first_name} {profile.last_name}
           </h3>
           <p className="text-gray-600 dark:text-gray-300">{profile.title}</p>
         </div>
@@ -78,8 +112,8 @@ const AdminProfile = () => {
           </label>
           <input
             type="text"
-            value={profile.firstName}
-            onChange={(e) => handleInputChange('firstName', e.target.value)}
+            value={profile.first_name}
+            onChange={(e) => handleInputChange('first_name', e.target.value)}
             className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           />
         </div>
@@ -90,8 +124,8 @@ const AdminProfile = () => {
           </label>
           <input
             type="text"
-            value={profile.lastName}
-            onChange={(e) => handleInputChange('lastName', e.target.value)}
+            value={profile.last_name}
+            onChange={(e) => handleInputChange('last_name', e.target.value)}
             className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           />
         </div>
@@ -168,8 +202,8 @@ const AdminProfile = () => {
         </label>
         <input
           type="url"
-          value={profile.website}
-          onChange={(e) => handleInputChange('website', e.target.value)}
+          value={profile.website_url}
+          onChange={(e) => handleInputChange('website_url', e.target.value)}
           className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           placeholder="https://yourwebsite.com"
         />
@@ -181,8 +215,8 @@ const AdminProfile = () => {
         </label>
         <input
           type="url"
-          value={profile.github}
-          onChange={(e) => handleInputChange('github', e.target.value)}
+          value={profile.github_url}
+          onChange={(e) => handleInputChange('github_url', e.target.value)}
           className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           placeholder="https://github.com/username"
         />
@@ -194,8 +228,8 @@ const AdminProfile = () => {
         </label>
         <input
           type="url"
-          value={profile.linkedin}
-          onChange={(e) => handleInputChange('linkedin', e.target.value)}
+          value={profile.linkedin_url}
+          onChange={(e) => handleInputChange('linkedin_url', e.target.value)}
           className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           placeholder="https://linkedin.com/in/username"
         />
@@ -207,8 +241,8 @@ const AdminProfile = () => {
         </label>
         <input
           type="url"
-          value={profile.twitter}
-          onChange={(e) => handleInputChange('twitter', e.target.value)}
+          value={profile.twitter_url}
+          onChange={(e) => handleInputChange('twitter_url', e.target.value)}
           className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           placeholder="https://twitter.com/username"
         />

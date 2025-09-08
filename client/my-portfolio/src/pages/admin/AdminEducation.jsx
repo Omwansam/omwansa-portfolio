@@ -1,56 +1,117 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { apiService } from '../../services';
 
 const AdminEducation = () => {
-  const [educations] = useState([
-    {
-      id: 1,
-      institution: 'University of Nairobi',
-      degree: 'Bachelor of Science in Computer Science',
-      field: 'Computer Science',
-      location: 'Nairobi, Kenya',
-      startDate: '2016-09-01',
-      endDate: '2020-06-30',
-      gpa: '3.8',
-      description: 'Focused on software engineering, algorithms, and data structures. Completed several projects including a web-based student management system.',
-      achievements: [
-        'Graduated Magna Cum Laude',
-        'Dean\'s List for 3 consecutive years',
-        'President of Computer Science Club',
-        'Best Final Year Project Award'
-      ],
-      relevantCoursework: ['Data Structures', 'Algorithms', 'Database Systems', 'Software Engineering', 'Web Development']
-    },
-    {
-      id: 2,
-      institution: 'FreeCodeCamp',
-      degree: 'Full Stack Web Development Certification',
-      field: 'Web Development',
-      location: 'Online',
-      startDate: '2019-01-01',
-      endDate: '2019-12-31',
-      gpa: null,
-      description: 'Comprehensive program covering front-end and back-end web development technologies.',
-      achievements: [
-        'Completed 6 certification projects',
-        'Built 5 full-stack applications',
-        'Contributed to open source projects'
-      ],
-      relevantCoursework: ['HTML/CSS', 'JavaScript', 'React', 'Node.js', 'MongoDB', 'Git']
-    }
-  ]);
-
+  const [educations, setEducations] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingEducation, setEditingEducation] = useState(null);
+  const [formData, setFormData] = useState({
+    institution: '',
+    degree: '',
+    field_of_study: '',
+    location: '',
+    start_date: '',
+    end_date: '',
+    gpa: '',
+    description: ''
+  });
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  useEffect(() => {
+    fetchEducations();
+  }, []);
+
+  const fetchEducations = async () => {
+    try {
+      setLoading(true);
+      const data = await apiService.getEducations();
+      setEducations(data);
+    } catch (error) {
+      console.error('Error fetching educations:', error);
+      setError('Failed to fetch education records');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleEdit = (education) => {
     setEditingEducation(education);
+    setFormData({
+      institution: education.institution || '',
+      degree: education.degree || '',
+      field_of_study: education.field_of_study || '',
+      location: education.location || '',
+      start_date: education.start_date || '',
+      end_date: education.end_date || '',
+      gpa: education.gpa ?? '',
+      description: education.description || ''
+    });
     setShowModal(true);
   };
 
-  const handleDelete = (educationId) => {
+  const handleDelete = async (educationId) => {
     if (window.confirm('Are you sure you want to delete this education record?')) {
-      console.log('Delete education:', educationId);
+      try {
+        await apiService.deleteEducation(educationId);
+        setEducations(educations.filter(e => e.id !== educationId));
+        setSuccess('Education record deleted successfully');
+        setTimeout(() => setSuccess(''), 3000);
+      } catch (error) {
+        console.error('Error deleting education:', error);
+        setError('Failed to delete education record');
+        setTimeout(() => setError(''), 3000);
+      }
     }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      setError('');
+      setSuccess('');
+
+      const educationData = {
+        ...formData,
+      };
+
+      if (editingEducation) {
+        await apiService.updateEducation(editingEducation.id, educationData);
+        setEducations(educations.map(e => e.id === editingEducation.id ? { ...e, ...educationData } : e));
+        setSuccess('Education record updated successfully');
+      } else {
+        const newEducation = await apiService.createEducation(educationData);
+        setEducations([newEducation, ...educations]);
+        setSuccess('Education record created successfully');
+      }
+
+      setShowModal(false);
+      setEditingEducation(null);
+      setFormData({
+        institution: '',
+        degree: '',
+        field_of_study: '',
+        location: '',
+        start_date: '',
+        end_date: '',
+        gpa: '',
+        description: ''
+      });
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (error) {
+      console.error('Error saving education:', error);
+      setError('Failed to save education record');
+      setTimeout(() => setError(''), 3000);
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   const formatDate = (dateString) => {
@@ -98,7 +159,7 @@ const AdminEducation = () => {
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Universities</p>
               <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                {new Set(educations.map(e => e.institution)).size}
+                {new Set((Array.isArray(educations)?educations:[]).map(e => e.institution)).size}
               </p>
             </div>
             <div className="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
@@ -112,7 +173,7 @@ const AdminEducation = () => {
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Certifications</p>
               <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                {educations.filter(e => e.degree.toLowerCase().includes('certification')).length}
+                {(Array.isArray(educations)?educations:[]).filter(e => (e.degree||'').toLowerCase().includes('certification')).length}
               </p>
             </div>
             <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
@@ -142,32 +203,16 @@ const AdminEducation = () => {
                 <div className="flex items-center space-x-4 text-gray-600 dark:text-gray-300 mb-3">
                   <span className="font-medium">{education.institution}</span>
                   <span>📍 {education.location}</span>
-                  <span>📅 {formatDate(education.startDate)} - {formatDate(education.endDate)}</span>
+                  <span>📅 {formatDate(education.start_date)} - {formatDate(education.end_date)}</span>
                 </div>
 
                 <p className="text-gray-600 dark:text-gray-300 mb-4">
                   {education.description}
                 </p>
 
-                <div className="mb-4">
-                  <h4 className="font-medium text-gray-900 dark:text-white mb-2">Key Achievements:</h4>
-                  <ul className="list-disc list-inside space-y-1 text-sm text-gray-600 dark:text-gray-300">
-                    {education.achievements.map((achievement, index) => (
-                      <li key={index}>{achievement}</li>
-                    ))}
-                  </ul>
-                </div>
+                {/* Achievements not in backend model; include in description if needed */}
 
-                <div>
-                  <h4 className="font-medium text-gray-900 dark:text-white mb-2">Relevant Coursework:</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {education.relevantCoursework.map((course, index) => (
-                      <span key={index} className="px-2 py-1 text-xs bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded">
-                        {course}
-                      </span>
-                    ))}
-                  </div>
-                </div>
+                {/* Coursework not in backend model; include in description if needed */}
               </div>
 
               <div className="flex flex-col space-y-2 ml-4">
@@ -241,7 +286,7 @@ const AdminEducation = () => {
                     </label>
                     <input
                       type="text"
-                      defaultValue={editingEducation?.field || ''}
+                      defaultValue={editingEducation?.field_of_study || ''}
                       className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                       placeholder="Field of study"
                     />
@@ -267,7 +312,7 @@ const AdminEducation = () => {
                     </label>
                     <input
                       type="date"
-                      defaultValue={editingEducation?.startDate || ''}
+                      defaultValue={editingEducation?.start_date || ''}
                       className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     />
                   </div>
@@ -278,7 +323,7 @@ const AdminEducation = () => {
                     </label>
                     <input
                       type="date"
-                      defaultValue={editingEducation?.endDate || ''}
+                      defaultValue={editingEducation?.end_date || ''}
                       className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     />
                   </div>
@@ -308,17 +353,7 @@ const AdminEducation = () => {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Relevant Coursework (comma-separated)
-                  </label>
-                  <input
-                    type="text"
-                    defaultValue={editingEducation?.relevantCoursework?.join(', ') || ''}
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    placeholder="Data Structures, Algorithms, Web Development"
-                  />
-                </div>
+                {/* Relevant Coursework input removed to match backend */}
 
                 <div className="flex justify-end space-x-4">
                   <button

@@ -1,51 +1,129 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { apiService } from '../../services';
 
 const AdminProjects = () => {
-  const [projects] = useState([
-    {
-      id: 1,
-      title: 'E-Commerce Platform',
-      description: 'A comprehensive e-commerce solution with advanced features',
-      category: 'web',
-      status: 'completed',
-      technologies: ['Next.js', 'Node.js', 'PostgreSQL', 'Stripe'],
-      createdAt: '2024-01-15',
-      updatedAt: '2024-01-20'
-    },
-    {
-      id: 2,
-      title: 'Restaurant Management System',
-      description: 'Complete POS and restaurant management solution',
-      category: 'web',
-      status: 'completed',
-      technologies: ['React', 'Node.js', 'MongoDB', 'Socket.io'],
-      createdAt: '2024-01-10',
-      updatedAt: '2024-01-18'
-    },
-    {
-      id: 3,
-      title: 'Task Management App',
-      description: 'Mobile-first task management application',
-      category: 'mobile',
-      status: 'in-progress',
-      technologies: ['React Native', 'Firebase', 'Redux'],
-      createdAt: '2024-01-25',
-      updatedAt: '2024-01-28'
-    }
-  ]);
-
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    short_description: '',
+    image_url: '',
+    github_url: '',
+    live_url: '',
+    status: 'completed',
+    featured: false,
+    technologies: []
+  });
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  useEffect(() => {
+    fetchProjects();
+  }, []);
+
+  const fetchProjects = async () => {
+    try {
+      setLoading(true);
+      const data = await apiService.getProjects();
+      setProjects(data);
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+      setError('Failed to fetch projects');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleEdit = (project) => {
     setEditingProject(project);
+    setFormData({
+      title: project.title || '',
+      description: project.description || '',
+      short_description: project.short_description || '',
+      image_url: project.image_url || '',
+      github_url: project.github_url || '',
+      live_url: project.live_url || '',
+      status: project.status || 'completed',
+      featured: project.featured || false,
+      technologies: project.technologies || []
+    });
     setShowModal(true);
   };
 
-  const handleDelete = (projectId) => {
+  const handleDelete = async (projectId) => {
     if (window.confirm('Are you sure you want to delete this project?')) {
-      console.log('Delete project:', projectId);
+      try {
+        await apiService.deleteProject(projectId);
+        setProjects(projects.filter(p => p.id !== projectId));
+        setSuccess('Project deleted successfully');
+        setTimeout(() => setSuccess(''), 3000);
+      } catch (error) {
+        console.error('Error deleting project:', error);
+        setError('Failed to delete project');
+        setTimeout(() => setError(''), 3000);
+      }
     }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      setError('');
+      setSuccess('');
+
+      const projectData = {
+        ...formData,
+        technologies: JSON.stringify(formData.technologies)
+      };
+
+      if (editingProject) {
+        await apiService.updateProject(editingProject.id, projectData);
+        setProjects(projects.map(p => p.id === editingProject.id ? { ...p, ...formData } : p));
+        setSuccess('Project updated successfully');
+      } else {
+        const newProject = await apiService.createProject(projectData);
+        setProjects([newProject, ...projects]);
+        setSuccess('Project created successfully');
+      }
+
+      setShowModal(false);
+      setEditingProject(null);
+      setFormData({
+        title: '',
+        description: '',
+        short_description: '',
+        image_url: '',
+        github_url: '',
+        live_url: '',
+        status: 'completed',
+        featured: false,
+        technologies: []
+      });
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (error) {
+      console.error('Error saving project:', error);
+      setError('Failed to save project');
+      setTimeout(() => setError(''), 3000);
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  const handleTechnologyChange = (e) => {
+    const technologies = e.target.value.split(',').map(tech => tech.trim()).filter(tech => tech);
+    setFormData(prev => ({
+      ...prev,
+      technologies
+    }));
   };
 
   const getStatusColor = (status) => {
@@ -150,7 +228,7 @@ const AdminProjects = () => {
                   Project
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Category
+                  Type
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Status
@@ -167,7 +245,27 @@ const AdminProjects = () => {
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-              {projects.map((project) => (
+              {loading ? (
+                <tr>
+                  <td colSpan="6" className="px-6 py-12 text-center">
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                      <span className="ml-2 text-gray-600 dark:text-gray-400">Loading projects...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : projects.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="px-6 py-12 text-center">
+                    <div className="text-gray-500 dark:text-gray-400">
+                      <div className="text-4xl mb-4">💼</div>
+                      <p>No projects found</p>
+                      <p className="text-sm">Create your first project to get started</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                projects.map((project) => (
                 <tr key={project.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div>
@@ -181,7 +279,7 @@ const AdminProjects = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="px-2 py-1 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-full">
-                      {project.category}
+                      {project.featured ? 'Featured' : 'Regular'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -204,7 +302,7 @@ const AdminProjects = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                    {new Date(project.updatedAt).toLocaleDateString()}
+                    {new Date(project.updated_at).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-2">
@@ -223,11 +321,24 @@ const AdminProjects = () => {
                     </div>
                   </td>
                 </tr>
-              ))}
+                ))
+              )}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* Error/Success Messages */}
+      {error && (
+        <div className="bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-200 px-4 py-3 rounded-lg mb-4">
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="bg-green-100 dark:bg-green-900 border border-green-400 dark:border-green-700 text-green-700 dark:text-green-200 px-4 py-3 rounded-lg mb-4">
+          {success}
+        </div>
+      )}
 
       {/* Modal for Add/Edit Project */}
       {showModal && (
@@ -242,6 +353,17 @@ const AdminProjects = () => {
                   onClick={() => {
                     setShowModal(false);
                     setEditingProject(null);
+                    setFormData({
+                      title: '',
+                      description: '',
+                      short_description: '',
+                      image_url: '',
+                      github_url: '',
+                      live_url: '',
+                      status: 'completed',
+                      featured: false,
+                      technologies: []
+                    });
                   }}
                   className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-2xl"
                 >
@@ -249,74 +371,139 @@ const AdminProjects = () => {
                 </button>
               </div>
 
-              <form className="space-y-6">
+              <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Project Title
+                    Project Title *
                   </label>
                   <input
                     type="text"
-                    defaultValue={editingProject?.title || ''}
+                    name="title"
+                    value={formData.title}
+                    onChange={handleInputChange}
                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     placeholder="Enter project title"
+                    required
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Description
+                    Short Description *
+                  </label>
+                  <input
+                    type="text"
+                    name="short_description"
+                    value={formData.short_description}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    placeholder="Brief project description"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Full Description
                   </label>
                   <textarea
                     rows={3}
-                    defaultValue={editingProject?.description || ''}
+                    name="description"
+                    value={formData.description}
+                    onChange={handleInputChange}
                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    placeholder="Enter project description"
+                    placeholder="Detailed project description"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Category
+                      Status *
                     </label>
                     <select
-                      defaultValue={editingProject?.category || ''}
+                      name="status"
+                      value={formData.status}
+                      onChange={handleInputChange}
                       className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      required
                     >
-                      <option value="">Select category</option>
-                      <option value="web">Web Development</option>
-                      <option value="mobile">Mobile Development</option>
-                      <option value="api">API Development</option>
-                      <option value="design">UI/UX Design</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Status
-                    </label>
-                    <select
-                      defaultValue={editingProject?.status || ''}
-                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    >
-                      <option value="">Select status</option>
                       <option value="planned">Planned</option>
                       <option value="in-progress">In Progress</option>
                       <option value="completed">Completed</option>
                     </select>
                   </div>
+
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      name="featured"
+                      checked={formData.featured}
+                      onChange={handleInputChange}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <label className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+                      Featured Project
+                    </label>
+                  </div>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Technologies (comma-separated)
+                    Technologies (comma-separated) *
                   </label>
                   <input
                     type="text"
-                    defaultValue={editingProject?.technologies?.join(', ') || ''}
+                    value={formData.technologies.join(', ')}
+                    onChange={handleTechnologyChange}
                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     placeholder="React, Node.js, MongoDB"
+                    required
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Image URL
+                  </label>
+                  <input
+                    type="url"
+                    name="image_url"
+                    value={formData.image_url}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    placeholder="https://example.com/image.jpg"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      GitHub URL
+                    </label>
+                    <input
+                      type="url"
+                      name="github_url"
+                      value={formData.github_url}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      placeholder="https://github.com/username/repo"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Live URL
+                    </label>
+                    <input
+                      type="url"
+                      name="live_url"
+                      value={formData.live_url}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      placeholder="https://example.com"
+                    />
+                  </div>
                 </div>
 
                 <div className="flex justify-end space-x-4">
@@ -325,6 +512,17 @@ const AdminProjects = () => {
                     onClick={() => {
                       setShowModal(false);
                       setEditingProject(null);
+                      setFormData({
+                        title: '',
+                        description: '',
+                        short_description: '',
+                        image_url: '',
+                        github_url: '',
+                        live_url: '',
+                        status: 'completed',
+                        featured: false,
+                        technologies: []
+                      });
                     }}
                     className="px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                   >

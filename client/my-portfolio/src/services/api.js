@@ -127,6 +127,209 @@ class ApiService {
     });
   }
 
+  // Projects API
+  async getProjects(filters = {}) {
+    const params = new URLSearchParams();
+    if (filters.status) params.append('status', filters.status);
+    if (filters.featured !== undefined) params.append('featured', filters.featured);
+    
+    const queryString = params.toString();
+    return this.request(`/projects${queryString ? `?${queryString}` : ''}`);
+  }
+
+  async getProject(projectId) {
+    return this.request(`/projects/${projectId}`);
+  }
+
+  async createProject(projectData) {
+    return this.request('/projects', {
+      method: 'POST',
+      body: JSON.stringify(projectData),
+    });
+  }
+
+  async updateProject(projectId, projectData) {
+    return this.request(`/projects/${projectId}`, {
+      method: 'PUT',
+      body: JSON.stringify(projectData),
+    });
+  }
+
+  async deleteProject(projectId) {
+    return this.request(`/projects/${projectId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Skills API
+  async getSkills(filters = {}) {
+    const params = new URLSearchParams();
+    if (filters.category) params.append('category', filters.category);
+    
+    const queryString = params.toString();
+    return this.request(`/skills${queryString ? `?${queryString}` : ''}`);
+  }
+
+  async getSkill(skillId) {
+    return this.request(`/skills/${skillId}`);
+  }
+
+  async createSkill(skillData) {
+    return this.request('/skills', {
+      method: 'POST',
+      body: JSON.stringify(skillData),
+    });
+  }
+
+  async updateSkill(skillId, skillData) {
+    return this.request(`/skills/${skillId}`, {
+      method: 'PUT',
+      body: JSON.stringify(skillData),
+    });
+  }
+
+  async deleteSkill(skillId) {
+    return this.request(`/skills/${skillId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Experience API
+  async getExperiences() {
+    return this.request('/experience');
+  }
+
+  async getExperience(experienceId) {
+    return this.request(`/experience/${experienceId}`);
+  }
+
+  async createExperience(experienceData) {
+    return this.request('/experience', {
+      method: 'POST',
+      body: JSON.stringify(experienceData),
+    });
+  }
+
+  async updateExperience(experienceId, experienceData) {
+    return this.request(`/experience/${experienceId}`, {
+      method: 'PUT',
+      body: JSON.stringify(experienceData),
+    });
+  }
+
+  async deleteExperience(experienceId) {
+    return this.request(`/experience/${experienceId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Education API
+  async getEducations() {
+    return this.request('/education');
+  }
+
+  async getEducation(educationId) {
+    return this.request(`/education/${educationId}`);
+  }
+
+  async createEducation(educationData) {
+    return this.request('/education', {
+      method: 'POST',
+      body: JSON.stringify(educationData),
+    });
+  }
+
+  async updateEducation(educationId, educationData) {
+    return this.request(`/education/${educationId}`, {
+      method: 'PUT',
+      body: JSON.stringify(educationData),
+    });
+  }
+
+  async deleteEducation(educationId) {
+    return this.request(`/education/${educationId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Blog API
+  async getBlogPosts(filters = {}) {
+    const params = new URLSearchParams();
+    if (filters.published !== undefined) params.append('published', filters.published);
+    if (filters.author_id) params.append('author_id', filters.author_id);
+    
+    const queryString = params.toString();
+    const response = await this.request(`/blog${queryString ? `?${queryString}` : ''}`);
+    
+    // Handle backend response structure: {blogs: [...], pagination: {...}}
+    if (response && response.blogs) {
+      return response.blogs;
+    }
+    return response;
+  }
+
+  async getBlogPost(blogId) {
+    return this.request(`/blog/${blogId}`);
+  }
+
+  async createBlogPost(blogData) {
+    return this.request('/blog', {
+      method: 'POST',
+      body: JSON.stringify(blogData),
+    });
+  }
+
+  async updateBlogPost(blogId, blogData) {
+    return this.request(`/blog/${blogId}`, {
+      method: 'PUT',
+      body: JSON.stringify(blogData),
+    });
+  }
+
+  async deleteBlogPost(blogId) {
+    return this.request(`/blog/${blogId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Contacts API
+  async getContacts(filters = {}) {
+    const params = new URLSearchParams();
+    if (filters.read !== undefined) params.append('read', filters.read);
+    
+    const queryString = params.toString();
+    const response = await this.request(`/contact${queryString ? `?${queryString}` : ''}`);
+    // Backend shape: { contacts: [...], pagination: {...} }
+    if (response && Array.isArray(response.contacts)) {
+      return response.contacts;
+    }
+    // Fallbacks for other shapes
+    if (Array.isArray(response)) return response;
+    if (response && Array.isArray(response.results)) return response.results;
+    return [];
+  }
+
+  async getContact(contactId) {
+    return this.request(`/contact/${contactId}`);
+  }
+
+  async markContactAsRead(contactId) {
+    return this.request(`/contact/${contactId}/read`, {
+      method: 'PUT',
+    });
+  }
+
+  async deleteContact(contactId) {
+    return this.request(`/contact/${contactId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Portfolio/Stats API
+  async getPortfolioStats() {
+    return this.request('/portfolio/stats');
+  }
+
   // Token management
   setTokens(accessToken, refreshToken) {
     localStorage.setItem('access_token', accessToken);

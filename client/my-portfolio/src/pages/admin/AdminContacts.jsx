@@ -1,78 +1,97 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { apiService } from '../../services';
 
 const AdminContacts = () => {
-  const [contacts] = useState([
-    {
-      id: 1,
-      name: 'John Doe',
-      email: 'john.doe@example.com',
-      subject: 'Project Collaboration',
-      message: 'Hi Omwansa, I saw your portfolio and I\'m interested in collaborating on a new project. Would you be available for a call this week?',
-      status: 'unread',
-      createdAt: '2024-01-28T10:30:00Z',
-      phone: '+1 (555) 123-4567',
-      company: 'Tech Solutions Inc.'
-    },
-    {
-      id: 2,
-      name: 'Sarah Wilson',
-      email: 'sarah.wilson@startup.com',
-      subject: 'Freelance Opportunity',
-      message: 'We\'re looking for a React developer to help us build our MVP. Your experience with e-commerce platforms caught our attention.',
-      status: 'read',
-      createdAt: '2024-01-27T14:15:00Z',
-      phone: '+1 (555) 987-6543',
-      company: 'StartupXYZ'
-    },
-    {
-      id: 3,
-      name: 'Mike Johnson',
-      email: 'mike.j@agency.com',
-      subject: 'Full-time Position',
-      message: 'Our agency is expanding and we need a senior full-stack developer. Your portfolio shows exactly the skills we\'re looking for.',
-      status: 'replied',
-      createdAt: '2024-01-26T09:45:00Z',
-      phone: '+1 (555) 456-7890',
-      company: 'Digital Agency Pro'
-    },
-    {
-      id: 4,
-      name: 'Emily Chen',
-      email: 'emily.chen@consulting.com',
-      subject: 'Consulting Project',
-      message: 'We have a client who needs help with their React application architecture. Would you be interested in a consulting role?',
-      status: 'unread',
-      createdAt: '2024-01-25T16:20:00Z',
-      phone: '+1 (555) 321-0987',
-      company: 'Tech Consulting Group'
-    }
-  ]);
-
+  const [contacts, setContacts] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selectedContact, setSelectedContact] = useState(null);
   const [showModal, setShowModal] = useState(false);
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [filter, setFilter] = useState('all');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
-  const filteredContacts = filterStatus === 'all' 
-    ? contacts 
-    : contacts.filter(contact => contact.status === filterStatus);
+  useEffect(() => {
+    fetchContacts();
+  }, []);
+
+  const fetchContacts = async () => {
+    try {
+      setLoading(true);
+      const data = await apiService.getContacts();
+      // Normalize API response to an array and map fields to UI shape
+      const rawList = Array.isArray(data)
+        ? data
+        : (data && Array.isArray(data.results))
+          ? data.results
+          : (data && Array.isArray(data.contacts))
+            ? data.contacts
+            : [];
+
+      const normalized = rawList.map((item) => ({
+        id: item.id,
+        name: item.name || item.full_name || 'Unknown',
+        email: item.email || '',
+        subject: item.subject || 'No subject',
+        message: item.message || '',
+        // Backend likely returns read boolean; derive status for UI chips
+        status: typeof item.read === 'boolean' ? (item.read ? 'read' : 'unread') : (item.status || 'unread'),
+        createdAt: item.created_at || item.createdAt || new Date().toISOString(),
+        phone: item.phone || '',
+        company: item.company || ''
+      }));
+
+      setContacts(normalized);
+    } catch (error) {
+      console.error('Error fetching contacts:', error);
+      setError('Failed to fetch contact messages');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMarkAsRead = async (contactId) => {
+    try {
+      await apiService.markContactAsRead(contactId);
+      setContacts((prev) => prev.map(c => c.id === contactId ? { ...c, read: true, status: 'read' } : c));
+      setSuccess('Contact marked as read');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (error) {
+      console.error('Error marking contact as read:', error);
+      setError('Failed to mark contact as read');
+      setTimeout(() => setError(''), 3000);
+    }
+  };
+
+  const handleDelete = async (contactId) => {
+    if (window.confirm('Are you sure you want to delete this contact message?')) {
+      try {
+        await apiService.deleteContact(contactId);
+        setContacts(contacts.filter(c => c.id !== contactId));
+        setSuccess('Contact message deleted successfully');
+        setTimeout(() => setSuccess(''), 3000);
+      } catch (error) {
+        console.error('Error deleting contact:', error);
+        setError('Failed to delete contact message');
+        setTimeout(() => setError(''), 3000);
+      }
+    }
+  };
+
+  // Guard against non-array shapes
+  const safeContacts = Array.isArray(contacts) ? contacts : [];
+  const filteredContacts = filter === 'all'
+    ? safeContacts
+    : safeContacts.filter(contact =>
+        filter === 'replied' ? contact.status === 'replied' : contact.status === (filter === 'read' ? 'read' : 'unread')
+      );
 
   const handleViewContact = (contact) => {
     setSelectedContact(contact);
     setShowModal(true);
   };
 
-  const handleMarkAsRead = (contactId) => {
-    console.log('Mark as read:', contactId);
-  };
-
   const handleReply = (contactId) => {
     console.log('Reply to:', contactId);
-  };
-
-  const handleDelete = (contactId) => {
-    if (window.confirm('Are you sure you want to delete this contact?')) {
-      console.log('Delete contact:', contactId);
-    }
   };
 
   const getStatusColor = (status) => {
@@ -111,7 +130,7 @@ const AdminContacts = () => {
         </div>
         <div className="flex items-center space-x-4">
           <span className="text-sm text-gray-500 dark:text-gray-400">
-            {contacts.filter(c => c.status === 'unread').length} unread messages
+            {safeContacts.filter(c => c.status === 'unread').length} unread messages
           </span>
         </div>
       </div>
@@ -121,9 +140,9 @@ const AdminContacts = () => {
         {['all', 'unread', 'read', 'replied'].map((status) => (
           <button
             key={status}
-            onClick={() => setFilterStatus(status)}
+            onClick={() => setFilter(status)}
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              filterStatus === status
+              filter === status
                 ? 'bg-blue-600 dark:bg-blue-700 text-white'
                 : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
             }`}
@@ -131,7 +150,7 @@ const AdminContacts = () => {
             {status.charAt(0).toUpperCase() + status.slice(1)}
             {status !== 'all' && (
               <span className="ml-2 px-2 py-1 text-xs bg-gray-200 dark:bg-gray-600 rounded-full">
-                {contacts.filter(c => c.status === status).length}
+                {safeContacts.filter(c => c.status === status).length}
               </span>
             )}
           </button>
@@ -144,7 +163,7 @@ const AdminContacts = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Messages</p>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white">{contacts.length}</p>
+              <p className="text-3xl font-bold text-gray-900 dark:text-white">{safeContacts.length}</p>
             </div>
             <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
               <span className="text-2xl">📧</span>
@@ -157,7 +176,7 @@ const AdminContacts = () => {
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Unread</p>
               <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                {contacts.filter(c => c.status === 'unread').length}
+                {safeContacts.filter(c => c.status === 'unread').length}
               </p>
             </div>
             <div className="w-12 h-12 bg-red-100 dark:bg-red-900 rounded-lg flex items-center justify-center">
@@ -171,7 +190,7 @@ const AdminContacts = () => {
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Read</p>
               <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                {contacts.filter(c => c.status === 'read').length}
+                {safeContacts.filter(c => c.status === 'read').length}
               </p>
             </div>
             <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
@@ -185,7 +204,7 @@ const AdminContacts = () => {
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Replied</p>
               <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                {contacts.filter(c => c.status === 'replied').length}
+                {safeContacts.filter(c => c.status === 'replied').length}
               </p>
             </div>
             <div className="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">

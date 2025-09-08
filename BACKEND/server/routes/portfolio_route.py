@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify
 from extensions import db
-from models import User, Project, Skill, Experience, Education, Blog, Contact
+from models import User, Project, Skill, Experience, Education, Blog, Contact, ProjectStatus
 from sqlalchemy import func
 from datetime import datetime, timedelta
 
@@ -18,7 +18,7 @@ def get_portfolio_overview():
         
         # Count statistics
         total_projects = Project.query.count()
-        completed_projects = Project.query.filter_by(status='completed').count()
+        completed_projects = Project.query.filter_by(status=ProjectStatus.COMPLETED).count()
         total_skills = Skill.query.count()
         total_experience = Experience.query.count()
         total_education = Education.query.count()
@@ -82,17 +82,27 @@ def get_portfolio_overview():
         
         # Get monthly project statistics for the last 6 months
         six_months_ago = datetime.utcnow() - timedelta(days=180)
-        monthly_project_stats = db.session.query(
-            func.date_trunc('month', Project.created_at).label('month'),
-            func.count(Project.id).label('count')
-        ).filter(Project.created_at >= six_months_ago).group_by(
-            func.date_trunc('month', Project.created_at)
-        ).order_by(func.date_trunc('month', Project.created_at)).all()
+        try:
+            # Try PostgreSQL/SQLite date_trunc
+            monthly_project_stats = db.session.query(
+                func.date_trunc('month', Project.created_at).label('month'),
+                func.count(Project.id).label('count')
+            ).filter(Project.created_at >= six_months_ago).group_by(
+                func.date_trunc('month', Project.created_at)
+            ).order_by(func.date_trunc('month', Project.created_at)).all()
+        except:
+            # Fallback for SQLite - use strftime
+            monthly_project_stats = db.session.query(
+                func.strftime('%Y-%m', Project.created_at).label('month'),
+                func.count(Project.id).label('count')
+            ).filter(Project.created_at >= six_months_ago).group_by(
+                func.strftime('%Y-%m', Project.created_at)
+            ).order_by(func.strftime('%Y-%m', Project.created_at)).all()
         
         monthly_project_data = []
         for month, count in monthly_project_stats:
             monthly_project_data.append({
-                "month": month.strftime('%Y-%m') if month else None,
+                "month": month if isinstance(month, str) else (month.strftime('%Y-%m') if month else None),
                 "count": count
             })
         
@@ -138,9 +148,9 @@ def get_portfolio_stats():
     try:
         # Project statistics
         total_projects = Project.query.count()
-        completed_projects = Project.query.filter_by(status='completed').count()
-        in_progress_projects = Project.query.filter_by(status='in-progress').count()
-        planned_projects = Project.query.filter_by(status='planned').count()
+        completed_projects = Project.query.filter_by(status=ProjectStatus.COMPLETED).count()
+        in_progress_projects = Project.query.filter_by(status=ProjectStatus.IN_PROGRESS).count()
+        planned_projects = Project.query.filter_by(status=ProjectStatus.PLANNED).count()
         featured_projects = Project.query.filter_by(featured=True).count()
         
         # Skill statistics
@@ -176,49 +186,76 @@ def get_portfolio_stats():
         # Monthly statistics for the last 12 months
         twelve_months_ago = datetime.utcnow() - timedelta(days=365)
         
-        monthly_project_stats = db.session.query(
-            func.date_trunc('month', Project.created_at).label('month'),
-            func.count(Project.id).label('count')
-        ).filter(Project.created_at >= twelve_months_ago).group_by(
-            func.date_trunc('month', Project.created_at)
-        ).order_by(func.date_trunc('month', Project.created_at)).all()
-        
-        monthly_blog_stats = db.session.query(
-            func.date_trunc('month', Blog.published_at).label('month'),
-            func.count(Blog.id).label('count')
-        ).filter(
-            Blog.published == True,
-            Blog.published_at >= twelve_months_ago
-        ).group_by(
-            func.date_trunc('month', Blog.published_at)
-        ).order_by(func.date_trunc('month', Blog.published_at)).all()
-        
-        monthly_contact_stats = db.session.query(
-            func.date_trunc('month', Contact.created_at).label('month'),
-            func.count(Contact.id).label('count')
-        ).filter(Contact.created_at >= twelve_months_ago).group_by(
-            func.date_trunc('month', Contact.created_at)
-        ).order_by(func.date_trunc('month', Contact.created_at)).all()
+        try:
+            # Try PostgreSQL/SQLite date_trunc
+            monthly_project_stats = db.session.query(
+                func.date_trunc('month', Project.created_at).label('month'),
+                func.count(Project.id).label('count')
+            ).filter(Project.created_at >= twelve_months_ago).group_by(
+                func.date_trunc('month', Project.created_at)
+            ).order_by(func.date_trunc('month', Project.created_at)).all()
+            
+            monthly_blog_stats = db.session.query(
+                func.date_trunc('month', Blog.published_at).label('month'),
+                func.count(Blog.id).label('count')
+            ).filter(
+                Blog.published == True,
+                Blog.published_at >= twelve_months_ago
+            ).group_by(
+                func.date_trunc('month', Blog.published_at)
+            ).order_by(func.date_trunc('month', Blog.published_at)).all()
+            
+            monthly_contact_stats = db.session.query(
+                func.date_trunc('month', Contact.created_at).label('month'),
+                func.count(Contact.id).label('count')
+            ).filter(Contact.created_at >= twelve_months_ago).group_by(
+                func.date_trunc('month', Contact.created_at)
+            ).order_by(func.date_trunc('month', Contact.created_at)).all()
+        except:
+            # Fallback for SQLite - use strftime
+            monthly_project_stats = db.session.query(
+                func.strftime('%Y-%m', Project.created_at).label('month'),
+                func.count(Project.id).label('count')
+            ).filter(Project.created_at >= twelve_months_ago).group_by(
+                func.strftime('%Y-%m', Project.created_at)
+            ).order_by(func.strftime('%Y-%m', Project.created_at)).all()
+            
+            monthly_blog_stats = db.session.query(
+                func.strftime('%Y-%m', Blog.published_at).label('month'),
+                func.count(Blog.id).label('count')
+            ).filter(
+                Blog.published == True,
+                Blog.published_at >= twelve_months_ago
+            ).group_by(
+                func.strftime('%Y-%m', Blog.published_at)
+            ).order_by(func.strftime('%Y-%m', Blog.published_at)).all()
+            
+            monthly_contact_stats = db.session.query(
+                func.strftime('%Y-%m', Contact.created_at).label('month'),
+                func.count(Contact.id).label('count')
+            ).filter(Contact.created_at >= twelve_months_ago).group_by(
+                func.strftime('%Y-%m', Contact.created_at)
+            ).order_by(func.strftime('%Y-%m', Contact.created_at)).all()
         
         # Convert monthly stats to dictionaries
         monthly_project_data = []
         for month, count in monthly_project_stats:
             monthly_project_data.append({
-                "month": month.strftime('%Y-%m') if month else None,
+                "month": month if isinstance(month, str) else (month.strftime('%Y-%m') if month else None),
                 "count": count
             })
         
         monthly_blog_data = []
         for month, count in monthly_blog_stats:
             monthly_blog_data.append({
-                "month": month.strftime('%Y-%m') if month else None,
+                "month": month if isinstance(month, str) else (month.strftime('%Y-%m') if month else None),
                 "count": count
             })
         
         monthly_contact_data = []
         for month, count in monthly_contact_stats:
             monthly_contact_data.append({
-                "month": month.strftime('%Y-%m') if month else None,
+                "month": month if isinstance(month, str) else (month.strftime('%Y-%m') if month else None),
                 "count": count
             })
         
@@ -271,7 +308,7 @@ def get_sitemap():
     """Get sitemap data for SEO"""
     try:
         # Get all published projects
-        projects = Project.query.filter_by(published=True).all()
+        projects = Project.query.filter_by(status=ProjectStatus.COMPLETED).all()
         project_urls = []
         for project in projects:
             project_urls.append({
