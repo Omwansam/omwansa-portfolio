@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Outlet, useLocation, Link } from 'react-router-dom';
 import { useTheme } from '../../contexts/ThemeContext';
 
-const AdminLayout = ({ onLogout }) => {
+const AdminLayout = ({ onLogout, user }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { isDark, toggleTheme } = useTheme();
   const location = useLocation();
@@ -110,11 +110,17 @@ const AdminLayout = ({ onLogout }) => {
               {/* User menu */}
               <div className="flex items-center space-x-3">
                 <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">OA</span>
+                  <span className="text-white font-bold text-sm">
+                    {user ? `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}`.toUpperCase() || user.username?.[0]?.toUpperCase() || 'A' : 'A'}
+                  </span>
                 </div>
                 <div className="hidden sm:block">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">Omwansa Arnold</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Administrator</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                    {user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username : 'Administrator'}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {user?.is_admin ? 'Administrator' : 'User'}
+                  </p>
                 </div>
                 {onLogout && (
                   <button

@@ -23,23 +23,29 @@ const Login = ({ onLogin, isAdminLogin = false }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
+    setError('');
     
-    if (isAdminLogin && onLogin) {
-      // Admin login
-      const success = onLogin(formData);
-      if (!success) {
-        setError('Invalid admin credentials');
-      }
-    } else {
-      // Regular login (not used in this portfolio)
-      if (formData.email === 'admin@example.com' && formData.password === 'password') {
-        navigate('/admin');
+    try {
+      if (isAdminLogin && onLogin) {
+        // Admin login
+        const success = await onLogin(formData);
+        if (!success) {
+          setError('Invalid admin credentials or user is not an administrator');
+        }
       } else {
-        setError('Invalid credentials');
+        // Regular login (not used in this portfolio)
+        if (formData.email === 'admin@example.com' && formData.password === 'password') {
+          navigate('/admin');
+        } else {
+          setError('Invalid credentials');
+        }
       }
+    } catch (error) {
+      setError('Login failed. Please try again.');
+      console.error('Login error:', error);
+    } finally {
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
   };
 
   return (
@@ -104,9 +110,16 @@ const Login = ({ onLogin, isAdminLogin = false }) => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50"
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isLoading ? 'Signing in...' : 'Sign In'}
+            {isLoading ? (
+              <span className="flex items-center justify-center">
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                Signing in...
+              </span>
+            ) : (
+              'Sign In'
+            )}
           </button>
         </form>
 
@@ -114,9 +127,8 @@ const Login = ({ onLogin, isAdminLogin = false }) => {
           {isAdminLogin && (
             <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
               <p className="text-sm text-blue-800 dark:text-blue-200">
-                <strong>Demo Credentials:</strong><br />
-                Email: admin@example.com<br />
-                Password: admin123
+                <strong>Admin Access:</strong><br />
+                Use your administrator credentials to access the admin panel
               </p>
             </div>
           )}

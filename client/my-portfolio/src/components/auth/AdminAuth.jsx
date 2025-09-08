@@ -1,34 +1,71 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Login from '../../pages/Login';
+import { apiService } from '../../services';
 
 const AdminAuth = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState(null);
   const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if user is authenticated (check localStorage for admin token)
-    const adminToken = localStorage.getItem('adminToken');
-    if (adminToken) {
-      setIsAuthenticated(true);
-    }
-    setIsLoading(false);
+    checkAuthentication();
   }, []);
 
-  const handleLogin = (credentials) => {
-    // Simple admin authentication
-    if (credentials.email === 'admin@example.com' && credentials.password === 'admin123') {
-      localStorage.setItem('adminToken', 'admin-authenticated');
-      setIsAuthenticated(true);
-      return true;
+  const checkAuthentication = async () => {
+    try {
+      if (apiService.isAuthenticated()) {
+        console.log('🔍 Checking authentication...');
+        // Verify token is still valid by fetching user profile
+        const userData = await apiService.getProfile();
+        if (userData && userData.is_admin) {
+          console.log('✅ Authentication successful:', userData);
+          setUser(userData);
+          setIsAuthenticated(true);
+        } else {
+          console.log('❌ User is not admin or invalid');
+          // Token exists but user is not admin or invalid
+          apiService.clearTokens();
+        }
+      } else {
+        console.log('🔍 No authentication tokens found');
+      }
+    } catch (error) {
+      console.error('❌ Authentication check failed:', error);
+      apiService.clearTokens();
+    } finally {
+      setIsLoading(false);
     }
-    return false;
+  };
+
+  const handleLogin = async (credentials) => {
+    try {
+      console.log('🔐 Attempting login for:', credentials.email);
+      const response = await apiService.login(credentials.email, credentials.password);
+      console.log('📝 Login response:', response);
+      
+      if (response.user && response.user.is_admin) {
+        console.log('✅ Admin login successful');
+        // Store tokens
+        apiService.setTokens(response.access_token, response.refresh_token);
+        setUser(response.user);
+        setIsAuthenticated(true);
+        return true;
+      } else {
+        console.log('❌ User is not an administrator');
+        throw new Error('User is not an administrator');
+      }
+    } catch (error) {
+      console.error('❌ Login failed:', error);
+      return false;
+    }
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('adminToken');
+    apiService.clearTokens();
+    setUser(null);
     setIsAuthenticated(false);
     navigate('/');
   };
@@ -50,8 +87,8 @@ const AdminAuth = ({ children }) => {
     return <Login onLogin={handleLogin} isAdminLogin={true} />;
   }
 
-  // If authenticated, render admin layout with logout functionality
-  return React.cloneElement(children, { onLogout: handleLogout });
+  // If authenticated, render admin layout with logout functionality and user data
+  return React.cloneElement(children, { onLogout: handleLogout, user: user });
 };
 
 export default AdminAuth;
