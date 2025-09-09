@@ -16,7 +16,7 @@ from werkzeug.security import generate_password_hash
 # Import modules directly since we're already in the server directory
 from app import app
 from extensions import db
-from models import User, Skill, Project, Experience, Education, Contact, Blog, ProjectStatus, CategoryStatus
+from models import User, Skill, Project, Experience, Education, Contact, Blog, Image, ProjectStatus, CategoryStatus
 
 def clear_database():
     """Clear all data from the database"""
@@ -37,7 +37,7 @@ def create_users():
     # Admin user
     admin_user = User(
         username='admin',
-        email='admin@example.com',
+        email='omwansamarnold@gmail.com',
         password_hash=generate_password_hash('admin123'),
         is_admin=True,
         first_name='Omwansa',

@@ -2,10 +2,20 @@ from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import jwt_required, get_jwt_identity, create_access_token, create_refresh_token
 from extensions import db
-from models import User
+from models import User, Image
+import os
+import uuid
+from werkzeug.utils import secure_filename
+from datetime import datetime
 
 # Blueprint Configuration
 users_bp = Blueprint('auth', __name__)
+ALLOWED_IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.gif', '.webp'}
+
+def allowed_image(filename):
+    _, ext = os.path.splitext(filename.lower())
+    return ext in ALLOWED_IMAGE_EXTENSIONS
+
 
 # Utility function to get the current logged in user based on JWT token
 def get_current_user():
@@ -114,12 +124,54 @@ def get_profile():
         "first_name": user.first_name,
         "last_name": user.last_name,
         "bio": user.bio,
+        "title": user.title,
+        "location": user.location,
+        "phone": user.phone,
         "avatar_url": user.avatar_url,
         "github_url": user.github_url,
         "linkedin_url": user.linkedin_url,
         "twitter_url": user.twitter_url,
+        "instagram_url": user.instagram_url,
+        "whatsapp_url": user.whatsapp_url,
         "website_url": user.website_url,
+        "email_url": user.email_url,
+        "hero_image_url": user.hero_image_url,
+        "about_image_url": user.about_image_url,
+        "cv_url": user.cv_url,
         "is_admin": user.is_admin,
+        "created_at": user.created_at.isoformat() if user.created_at else None
+    }), 200
+
+
+@users_bp.route('/public-profile', methods=['GET'])
+def get_public_profile():
+    """Public endpoint to get portfolio owner's profile data without authentication"""
+    # Get the first admin user (portfolio owner)
+    user = User.query.filter_by(is_admin=True).first()
+    if not user:
+        return jsonify({"message": "Portfolio owner not found"}), 404
+    
+    return jsonify({
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "bio": user.bio,
+        "title": user.title,
+        "location": user.location,
+        "phone": user.phone,
+        "avatar_url": user.avatar_url,
+        "github_url": user.github_url,
+        "linkedin_url": user.linkedin_url,
+        "twitter_url": user.twitter_url,
+        "instagram_url": user.instagram_url,
+        "whatsapp_url": user.whatsapp_url,
+        "website_url": user.website_url,
+        "email_url": user.email_url,
+        "hero_image_url": user.hero_image_url,
+        "about_image_url": user.about_image_url,
+        "cv_url": user.cv_url,
         "created_at": user.created_at.isoformat() if user.created_at else None
     }), 200
 
@@ -140,6 +192,12 @@ def update_profile():
         user.last_name = data['last_name']
     if 'bio' in data:
         user.bio = data['bio']
+    if 'title' in data:
+        user.title = data['title']
+    if 'location' in data:
+        user.location = data['location']
+    if 'phone' in data:
+        user.phone = data['phone']
     if 'avatar_url' in data:
         user.avatar_url = data['avatar_url']
     if 'github_url' in data:
@@ -148,8 +206,20 @@ def update_profile():
         user.linkedin_url = data['linkedin_url']
     if 'twitter_url' in data:
         user.twitter_url = data['twitter_url']
+    if 'instagram_url' in data:
+        user.instagram_url = data['instagram_url']
+    if 'whatsapp_url' in data:
+        user.whatsapp_url = data['whatsapp_url']
     if 'website_url' in data:
         user.website_url = data['website_url']
+    if 'email_url' in data:
+        user.email_url = data['email_url']
+    if 'hero_image_url' in data:
+        user.hero_image_url = data['hero_image_url']
+    if 'about_image_url' in data:
+        user.about_image_url = data['about_image_url']
+    if 'cv_url' in data:
+        user.cv_url = data['cv_url']
     
     try:
         db.session.commit()
@@ -185,4 +255,153 @@ def change_password():
         db.session.rollback()
         return jsonify({"message": "An error occurred while changing the password", "details": str(e)}), 500
 
+
+# Image upload endpoints
+@users_bp.route('/profile/upload/<image_type>', methods=['POST'])
+@jwt_required()
+def upload_profile_image(image_type):
+    """Upload hero, about, or avatar image and store in database with metadata."""
+    user = get_current_user()
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+
+    if image_type not in {'hero', 'about', 'avatar'}:
+        return jsonify({"error": "Invalid image type"}), 400
+
+    if 'file' not in request.files:
+        return jsonify({"error": "No file part"}), 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+
+    if not allowed_image(file.filename):
+        return jsonify({"error": "Unsupported file type"}), 400
+
+    # Create upload directory
+    upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'static', 'uploads')
+    upload_dir = os.path.normpath(upload_dir)
+    os.makedirs(upload_dir, exist_ok=True)
+
+    # Generate unique filename while preserving original name
+    original_filename = secure_filename(file.filename)
+    name_without_ext, file_ext = os.path.splitext(original_filename)
+    unique_id = uuid.uuid4().hex[:8]  # Short unique ID
+    unique_filename = f"{name_without_ext}_{unique_id}{file_ext}"
+    
+    # Save file
+    file_path = os.path.join(upload_dir, unique_filename)
+    file.save(file_path)
+    
+    # Get file info
+    file_size = os.path.getsize(file_path)
+    mime_type = file.content_type or 'image/jpeg'
+    
+    # Public URL
+    public_url = f"/static/uploads/{unique_filename}"
+
+    try:
+        # Deactivate previous images of this type for this user
+        Image.query.filter_by(user_id=user.id, image_type=image_type, is_active=True).update({'is_active': False})
+        
+        # Create new image record
+        new_image = Image(
+            filename=unique_filename,
+            original_filename=original_filename,
+            file_path=file_path,
+            file_url=public_url,
+            file_size=file_size,
+            mime_type=mime_type,
+            image_type=image_type,
+            user_id=user.id,
+            is_active=True
+        )
+        
+        db.session.add(new_image)
+        
+        # Update user profile with new image URL
+        if image_type == 'hero':
+            user.hero_image_url = public_url
+        elif image_type == 'about':
+            user.about_image_url = public_url
+        elif image_type == 'avatar':
+            user.avatar_url = public_url
+            
+        db.session.commit()
+        
+        return jsonify({
+            "message": "Image uploaded successfully",
+            "url": public_url,
+            "image_id": new_image.id,
+            "filename": unique_filename,
+            "file_size": file_size
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        # Clean up uploaded file if database save fails
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        return jsonify({"error": "Failed to save image", "details": str(e)}), 500
+
+
+@users_bp.route('/profile/images', methods=['GET'])
+@jwt_required()
+def get_user_images():
+    """Get all images for the current user."""
+    user = get_current_user()
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+    
+    images = Image.query.filter_by(user_id=user.id, is_active=True).all()
+    
+    return jsonify({
+        "images": [{
+            "id": img.id,
+            "filename": img.filename,
+            "original_filename": img.original_filename,
+            "file_url": img.file_url,
+            "file_size": img.file_size,
+            "mime_type": img.mime_type,
+            "image_type": img.image_type,
+            "created_at": img.created_at.isoformat()
+        } for img in images]
+    }), 200
+
+
+@users_bp.route('/profile/images/<int:image_id>', methods=['DELETE'])
+@jwt_required()
+def delete_user_image(image_id):
+    """Delete a specific image."""
+    user = get_current_user()
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+    
+    image = Image.query.filter_by(id=image_id, user_id=user.id).first()
+    if not image:
+        return jsonify({"error": "Image not found"}), 404
+    
+    try:
+        # Delete physical file
+        if os.path.exists(image.file_path):
+            os.remove(image.file_path)
+        
+        # Remove from database
+        db.session.delete(image)
+        
+        # Update user profile if this was the active image
+        if image.image_type == 'hero' and user.hero_image_url == image.file_url:
+            user.hero_image_url = None
+        elif image.image_type == 'about' and user.about_image_url == image.file_url:
+            user.about_image_url = None
+        elif image.image_type == 'avatar' and user.avatar_url == image.file_url:
+            user.avatar_url = None
+            
+        db.session.commit()
+        
+        return jsonify({"message": "Image deleted successfully"}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Failed to delete image", "details": str(e)}), 500
 

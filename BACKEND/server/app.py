@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, send_from_directory
 from flask_cors import CORS
 from models import User
 
@@ -14,6 +14,7 @@ from routes.education_route import education_bp
 from routes.contact_route import contact_bp
 from routes.blog_route import blog_bp
 from routes.portfolio_route import portfolio_bp
+from routes.images_route import images_bp
 
 app = Flask(__name__)
 
@@ -29,7 +30,7 @@ jwt.init_app(app)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Register blueprints
-app.register_blueprint(users_bp, url_prefix='/api')
+app.register_blueprint(users_bp, url_prefix='/api/auth')
 app.register_blueprint(projects_bp, url_prefix='/api')
 app.register_blueprint(skills_bp, url_prefix='/api')
 app.register_blueprint(experience_bp, url_prefix='/api')
@@ -37,6 +38,7 @@ app.register_blueprint(education_bp, url_prefix='/api')
 app.register_blueprint(contact_bp, url_prefix='/api')
 app.register_blueprint(blog_bp, url_prefix='/api')
 app.register_blueprint(portfolio_bp, url_prefix='/api')
+app.register_blueprint(images_bp, url_prefix='/api/images')
 
 # Error handlers
 @app.errorhandler(404)
@@ -72,9 +74,15 @@ def home():
             "education": "/api/education/*",
             "contact": "/api/contact/*",
             "blog": "/api/blog/*",
-            "portfolio": "/api/portfolio/*"
+            "portfolio": "/api/portfolio/*",
+            "images": "/api/images/*"
         }
     })
+
+# Serve static files (uploads)
+@app.route('/static/uploads/<path:filename>')
+def serve_upload(filename):
+    return send_from_directory('static/uploads', filename)    
 
 @app.route('/health')
 def health_check():

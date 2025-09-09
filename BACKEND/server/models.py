@@ -27,11 +27,20 @@ class User(db.Model):
     first_name = db.Column(db.String(50))
     last_name = db.Column(db.String(50))
     bio = db.Column(db.Text)
+    title = db.Column(db.String(100))
+    location = db.Column(db.String(100))
+    phone = db.Column(db.String(20))
     avatar_url = db.Column(db.String(255))
     github_url = db.Column(db.String(255))
     linkedin_url = db.Column(db.String(255))
     twitter_url = db.Column(db.String(255))
     website_url = db.Column(db.String(255))
+    instagram_url = db.Column(db.String(255))
+    whatsapp_url = db.Column(db.String(255))
+    email_url = db.Column(db.String(255))
+    hero_image_url = db.Column(db.String(255))
+    about_image_url = db.Column(db.String(255))
+    cv_url = db.Column(db.String(500))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -150,3 +159,31 @@ class Blog(db.Model):
 
     def __repr__(self):
         return f'<Blog {self.title}>'
+
+
+class Image(db.Model):
+    """Model for storing image metadata"""
+    __tablename__ = 'images'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    filename = db.Column(db.String(255), nullable=False)
+    original_filename = db.Column(db.String(255), nullable=False)
+    file_path = db.Column(db.String(500), nullable=False)
+    file_url = db.Column(db.String(500), nullable=False)
+    file_size = db.Column(db.Integer, nullable=False)
+    mime_type = db.Column(db.String(100), nullable=False)
+    image_type = db.Column(db.String(50), nullable=False)  # 'hero', 'about', 'avatar', 'project', 'blog', etc.
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    project_id = db.Column(db.Integer, db.ForeignKey('projects.id'), nullable=True)
+    blog_id = db.Column(db.Integer, db.ForeignKey('blogs.id'), nullable=True)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    user = db.relationship('User', backref='images')
+    project = db.relationship('Project', backref='images')
+    blog = db.relationship('Blog', backref='images')
+
+    def __repr__(self):
+        return f'<Image {self.filename}>'

@@ -34,28 +34,40 @@ const Navbar = () => {
   const isActive = (path) => location.pathname === path;
 
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-50 w-full transition-all duration-300 ${
+    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
       isScrolled
-        ? 'bg-white/90 dark:bg-gray-900/90 backdrop-blur-md shadow-lg border-b border-gray-200 dark:border-gray-700'
-        : 'bg-transparent'
+        ? 'w-3/4 left-1/2 transform -translate-x-1/2 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md shadow-lg border border-gray-200 dark:border-gray-700 rounded-2xl mt-4'
+        : 'w-full bg-transparent'
     }`}>
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+        <div className={`flex items-center justify-between transition-all duration-300 ${
+          isScrolled ? 'h-12' : 'h-16'
+        }`}>
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-lg">O</span>
+            <div className={`bg-blue-600 rounded-lg flex items-center justify-center transition-all duration-300 ${
+              isScrolled ? 'w-6 h-6' : 'w-8 h-8'
+            }`}>
+              <span className={`text-white font-bold transition-all duration-300 ${
+                isScrolled ? 'text-sm' : 'text-lg'
+              }`}>O</span>
             </div>
-            <span className="text-xl font-bold text-gray-900 dark:text-white">Omwansa Arnold</span>
+            <span className={`font-bold text-gray-900 dark:text-white transition-all duration-300 ${
+              isScrolled ? 'text-lg' : 'text-xl'
+            }`}>Omwansa Arnold</span>
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
+          <div className={`hidden md:flex items-center transition-all duration-300 ${
+            isScrolled ? 'space-x-6' : 'space-x-8'
+          }`}>
             {navigation.map((item) => (
               <Link
                 key={item.name}
                 to={item.href}
-                className={`text-sm font-medium transition-colors duration-200 ${
+                className={`font-medium transition-all duration-300 ${
+                  isScrolled ? 'text-xs' : 'text-sm'
+                } ${
                   isActive(item.href)
                     ? 'text-blue-600 dark:text-blue-400'
                     : 'text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400'
@@ -67,14 +79,20 @@ const Navbar = () => {
           </div>
 
           {/* Right side buttons */}
-          <div className="flex items-center space-x-4">
+          <div className={`flex items-center transition-all duration-300 ${
+            isScrolled ? 'space-x-3' : 'space-x-4'
+          }`}>
                         {/* Dark mode toggle */}
                         <button
                           onClick={toggleTheme}
-                          className="p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                          className={`rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-300 ${
+                            isScrolled ? 'p-1.5' : 'p-2'
+                          }`}
                           title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
                         >
-                          {isDark ? '☀️' : '🌙'}
+                          <span className={`transition-all duration-300 ${
+                            isScrolled ? 'text-sm' : 'text-base'
+                          }`}>{isDark ? '☀️' : '🌙'}</span>
                         </button>
 
             {/* No auth buttons in navbar - admin login is handled separately */}
@@ -82,9 +100,13 @@ const Navbar = () => {
             {/* Mobile menu button */}
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className="md:hidden p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              className={`md:hidden rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-300 ${
+                isScrolled ? 'p-1.5' : 'p-2'
+              }`}
             >
-              {isOpen ? '✕' : '☰'}
+              <span className={`transition-all duration-300 ${
+                isScrolled ? 'text-sm' : 'text-base'
+              }`}>{isOpen ? '✕' : '☰'}</span>
             </button>
           </div>
         </div>

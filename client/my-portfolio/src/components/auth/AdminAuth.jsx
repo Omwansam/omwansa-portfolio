@@ -10,6 +10,28 @@ const AdminAuth = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
 
+  // Inactivity auto-logout (5 minutes)
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    let idleTimerId;
+    const resetTimer = () => {
+      if (idleTimerId) clearTimeout(idleTimerId);
+      idleTimerId = setTimeout(() => {
+        handleLogout();
+      }, 300000); // 5 minutes
+    };
+
+    const events = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart'];
+    events.forEach(evt => window.addEventListener(evt, resetTimer, { passive: true }));
+    resetTimer();
+
+    return () => {
+      events.forEach(evt => window.removeEventListener(evt, resetTimer));
+      if (idleTimerId) clearTimeout(idleTimerId);
+    };
+  }, [isAuthenticated]);
+
   useEffect(() => {
     checkAuthentication();
   }, []);

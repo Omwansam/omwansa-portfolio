@@ -1,16 +1,85 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { FaMapMarkerAlt, FaCircle, FaLinkedin, FaTwitter, FaGithub, FaInstagram, FaWhatsapp, FaGlobe } from 'react-icons/fa';
+import { apiService } from '../services';
 
 const Home = () => {
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
   const [animatedStats, setAnimatedStats] = useState([0, 0, 0, 0]);
+  const [roleIndex, setRoleIndex] = useState(0);
+  const [typedText, setTypedText] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [userProfile, setUserProfile] = useState(null);
+  const [portfolioStats, setPortfolioStats] = useState(null);
 
-  const stats = [
-    { label: 'Projects Completed', value: 50, suffix: '+' },
-    { label: 'Happy Clients', value: 30, suffix: '+' },
-    { label: 'Years Experience', value: 5, suffix: '+' },
-    { label: 'Technologies', value: 20, suffix: '+' },
-  ];
+  // Memoize roles array to prevent unnecessary re-renders
+  const roles = useMemo(() => [
+    'Full Stack Developer',
+    'Frontend Developer',
+    'Backend Developer',
+    'Mobile Developer',
+    'Cybersecurity Engineer',
+    'Network Engineer',
+    'Digital Solutions Architect',
+    'UI/UX Enthusiast',
+    'Cloud & DevOps Friendly',
+    
+  ], []);
+
+  useEffect(() => {
+    const current = roles[roleIndex % roles.length];
+    const delta = isDeleting ? 40 : 90;
+    const timer = setTimeout(() => {
+      const nextText = isDeleting
+        ? current.substring(0, typedText.length - 1)
+        : current.substring(0, typedText.length + 1);
+      setTypedText(nextText);
+
+      if (!isDeleting && nextText === current) {
+        setTimeout(() => setIsDeleting(true), 800);
+      } else if (isDeleting && nextText === '') {
+        setIsDeleting(false);
+        setRoleIndex((prev) => (prev + 1) % roles.length);
+      }
+    }, delta);
+    return () => clearTimeout(timer);
+  }, [typedText, isDeleting, roleIndex, roles]);
+
+  // Memoize stats array based on real portfolio data
+  const stats = useMemo(() => {
+    if (!portfolioStats) {
+      // Fallback to default values while loading
+      return [
+        { label: 'Projects Completed', value: 0, suffix: '+' },
+        { label: 'Happy Clients', value: 0, suffix: '+' },
+        { label: 'Years Experience', value: 0, suffix: '+' },
+        { label: 'Technologies', value: 0, suffix: '+' },
+      ];
+    }
+    
+    return [
+      { 
+        label: 'Projects Completed', 
+        value: portfolioStats.projects?.completed || 0, 
+        suffix: '+' 
+      },
+      { 
+        label: 'Happy Clients', 
+        value: portfolioStats.contacts?.total || 0, 
+        suffix: '+' 
+      },
+      { 
+        label: 'Years Experience', 
+        value: portfolioStats.experience?.total || 0, 
+        suffix: '+' 
+      },
+      { 
+        label: 'Technologies', 
+        value: portfolioStats.skills?.total || 0, 
+        suffix: '+' 
+      },
+    ];
+  }, [portfolioStats]);
 
   const features = [
     {
@@ -111,6 +180,24 @@ const Home = () => {
     }
   ];
 
+  // Fetch user profile and portfolio stats
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch user profile
+        const profile = await apiService.getPublicProfile();
+        setUserProfile(profile);
+        
+        // Fetch portfolio stats
+        const stats = await apiService.getPortfolioStats();
+        setPortfolioStats(stats);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    };
+    fetchData();
+  }, []);
+
   // Animate stats on scroll
   useEffect(() => {
     const animateStats = () => {
@@ -134,7 +221,7 @@ const Home = () => {
 
     const timer = setTimeout(animateStats, 1000);
     return () => clearTimeout(timer);
-  }, []);
+  }, [stats]);
 
   // Auto-rotate testimonials
   useEffect(() => {
@@ -142,38 +229,103 @@ const Home = () => {
       setCurrentTestimonial((prev) => (prev + 1) % testimonials.length);
     }, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [testimonials.length]);
 
   return (
     <div className="min-h-screen w-full">
       {/* Hero Section */}
-      <section className="relative w-full bg-gradient-to-br from-blue-600 via-blue-700 to-purple-600 text-white py-20">
+      <section className="relative w-full bg-gradient-to-br from-blue-600 via-blue-700 to-purple-600 text-white py-8 min-h-[85vh] flex items-center">
         <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-4xl mx-auto text-center">
-            <h1 className="text-4xl md:text-6xl font-bold mb-6">
-              Hi, I'm{' '}
-              <span className="text-yellow-400">Omwansa Arnold</span>
-            </h1>
-            <p className="text-xl md:text-2xl mb-8 text-gray-200">
-              Full-Stack Developer & Digital Solutions Architect
-            </p>
-            <p className="text-lg mb-12 text-gray-300 max-w-2xl mx-auto">
-              I create innovative digital solutions that help businesses grow and succeed. 
-              Specializing in modern web applications, mobile apps, and cloud solutions.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link
-                to="/projects"
-                className="bg-yellow-500 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-yellow-600 transition-colors"
-              >
-                View My Work
-              </Link>
-              <Link
-                to="/contact"
-                className="border-2 border-white text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-white hover:text-blue-600 transition-colors"
-              >
-                Get In Touch
-              </Link>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-38 items-center">
+            {/* Left: Hero Content */}
+            <div className="lg:col-span-6">
+              {/* Availability badge above title */}
+              <div className="flex items-center mb-8">
+                <span className="inline-block w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse mr-2"></span>
+                <span className="text-sm text-green-100">Available for new opportunities</span>
+              </div>
+
+              <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-4 lg:whitespace-nowrap">
+                Hi, I'm <span className="text-yellow-300">{userProfile ? `${userProfile.first_name} ${userProfile.last_name}` : 'Omwansa Arnold'}</span>
+              </h1>
+
+              {/* Typed roles with cursor */}
+              <p className="text-2xl md:text-3xl font-semibold text-white/90 mb-4 h-10">
+                <span>{typedText}</span>
+                <span className="ml-1 text-yellow-300">|</span>
+              </p>
+
+              <p className="text-lg md:text-xl mb-6 text-blue-100 max-w-xl">
+                I craft scalable, delightful digital products — from web apps to cloud-native solutions — with strong focus on performance, accessibility, and user experience.
+              </p>
+
+              {/* Location and availability */}
+              <div className="flex items-center gap-6 text-sm text-blue-100 mb-8">
+                <span className="flex items-center gap-2"><FaMapMarkerAlt className="text-white/90" /> Nairobi, Kenya</span>
+                <span className="opacity-60">•</span>
+                <span className="flex items-center gap-2"><FaCircle className="text-green-400" /> Available now</span>
+              </div>
+
+              {/* CTA Buttons */}
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Link
+                  to="/projects"
+                  className="bg-yellow-500 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-yellow-600 transition-colors"
+                >
+                  View My Work
+                </Link>
+                <Link
+                  to="/contact"
+                  className="border-2 border-white text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-white hover:text-blue-700 transition-colors"
+                >
+                  Get In Touch
+                </Link>
+              </div>
+
+              {/* Socials */}
+              <div className="mt-8">
+                <div className="text-sm uppercase tracking-wider text-blue-100 mb-3">Follow me</div>
+                <div className="flex flex-wrap items-center gap-4 text-white/90">
+                  <a href={userProfile?.linkedin_url || "https://linkedin.com/in/omwansa-arnold"} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-yellow-300 transition-colors" aria-label="LinkedIn">
+                    <FaLinkedin className="text-2xl" />
+                    <span>LinkedIn</span>
+                  </a>
+                  <a href={userProfile?.twitter_url || "https://twitter.com/omwansa_arnold"} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-yellow-300 transition-colors" aria-label="Twitter">
+                    <FaTwitter className="text-2xl" />
+                    <span>Twitter</span>
+                  </a>
+                  <a href={userProfile?.github_url || "https://github.com/omwansa-arnold"} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-yellow-300 transition-colors" aria-label="GitHub">
+                    <FaGithub className="text-2xl" />
+                    <span>GitHub</span>
+                  </a>
+                  <a href={userProfile?.instagram_url || "https://instagram.com/omwansa_arnold"} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-yellow-300 transition-colors" aria-label="Instagram">
+                    <FaInstagram className="text-2xl" />
+                    <span>Instagram</span>
+                  </a>
+                  <a href={userProfile?.whatsapp_url || "https://wa.me/254700000000"} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-yellow-300 transition-colors" aria-label="WhatsApp">
+                    <FaWhatsapp className="text-2xl" />
+                    <span>WhatsApp</span>
+                  </a>
+                  <a href={userProfile?.website_url || "https://omwansa-arnold.dev"} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-yellow-300 transition-colors" aria-label="Website">
+                    <FaGlobe className="text-2xl" />
+                    <span>Website</span>
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Hero Image */}
+            <div className="relative lg:col-span-6">
+              <div className="relative mx-auto w-96 h-96 md:w-[28rem] md:h-[28rem] overflow-hidden shadow-2xl ring-4 ring-white/20 rounded-2xl">
+                <img
+                  src={apiService.getFullImageUrl(userProfile?.hero_image_url || userProfile?.avatar_url)}
+                  alt={`${userProfile?.first_name || 'Omwansa'} ${userProfile?.last_name || 'Arnold'}`}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-white/10 backdrop-blur px-4 py-2 rounded-full text-sm">
+                Building world-class experiences ✨
+              </div>
             </div>
           </div>
         </div>
@@ -191,6 +343,185 @@ const Home = () => {
                 <div className="text-gray-600 dark:text-gray-300 font-medium">{stat.label}</div>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* About Me Section */}
+      <section className="py-20 bg-white dark:bg-gray-900 w-full">
+        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Section Header */}
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6">
+              About Me
+            </h2>
+            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto leading-relaxed">
+              Passionate about creating innovative digital solutions that make a difference. 
+              I combine technical expertise with creative thinking to deliver exceptional results.
+            </p>
+          </div>
+
+          {/* Two Column Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+            {/* Left: About Image */}
+            <div className="order-2 lg:order-1">
+              <div className="relative">
+                <div className="w-full h-96 lg:h-[500px] rounded-2xl overflow-hidden shadow-2xl">
+                  <img
+                    src={apiService.getFullImageUrl(userProfile?.about_image_url || userProfile?.avatar_url)}
+                    alt={`${userProfile?.first_name || 'Omwansa'} ${userProfile?.last_name || 'Arnold'}`}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center shadow-lg">
+                  <span className="text-white text-2xl">💻</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Details and Info Cards */}
+            <div className="order-1 lg:order-2 space-y-8">
+              {/* About Description */}
+              <div>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                  {userProfile?.first_name || 'Omwansa'} {userProfile?.last_name || 'Arnold'}
+                </h3>
+                <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-6">
+                  {userProfile?.bio || 'A dedicated full-stack developer with a passion for creating innovative digital solutions. I specialize in modern web technologies and enjoy turning complex problems into simple, beautiful designs.'}
+                </p>
+              </div>
+
+              {/* Info Cards Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Name Card */}
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-6 rounded-xl border border-blue-200 dark:border-blue-700 hover:shadow-lg transition-all duration-300">
+                  <div className="flex items-start space-x-3">
+                    <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <span className="text-white text-lg">👤</span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Name</p>
+                      <p className="font-semibold text-gray-900 dark:text-white break-words">
+                        {userProfile?.first_name || 'Omwansa'} {userProfile?.last_name || 'Arnold'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Location Card */}
+                <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 p-6 rounded-xl border border-green-200 dark:border-green-700 hover:shadow-lg transition-all duration-300">
+                  <div className="flex items-start space-x-3">
+                    <div className="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <FaMapMarkerAlt className="text-white text-lg" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Location</p>
+                      <p className="font-semibold text-gray-900 dark:text-white break-words">
+                        {userProfile?.location || 'Nairobi, Kenya'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Focus Card */}
+                <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 p-6 rounded-xl border border-purple-200 dark:border-purple-700 hover:shadow-lg transition-all duration-300">
+                  <div className="flex items-start space-x-3">
+                    <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <span className="text-white text-lg">🎯</span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Focus</p>
+                      <p className="font-semibold text-gray-900 dark:text-white break-words">
+                        {userProfile?.title || 'Full-Stack Development'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Email Card */}
+                <div className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 p-6 rounded-xl border border-orange-200 dark:border-orange-700 hover:shadow-lg transition-all duration-300">
+                  <div className="flex items-start space-x-3">
+                    <div className="w-10 h-10 bg-orange-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <span className="text-white text-lg">📧</span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Email</p>
+                      {userProfile?.email_url ? (
+                        <a 
+                          href={userProfile.email_url}
+                          className="font-semibold text-gray-900 dark:text-white hover:text-orange-600 dark:hover:text-orange-400 transition-colors duration-200 cursor-pointer break-all"
+                        >
+                          {userProfile?.email || 'Click to reveal email'}
+                        </a>
+                      ) : (
+                        <p className="font-semibold text-gray-900 dark:text-white break-all">
+                          {userProfile?.email || 'arnold@example.com'}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Phone Card */}
+                <div className="bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 p-6 rounded-xl border border-red-200 dark:border-red-700 hover:shadow-lg transition-all duration-300">
+                  <div className="flex items-start space-x-3">
+                    <div className="w-10 h-10 bg-red-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <span className="text-white text-lg">📱</span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Phone</p>
+                      <p className="font-semibold text-gray-900 dark:text-white break-words">
+                        {userProfile?.phone || '+254 700 000 000'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Status Card */}
+                <div className="bg-gradient-to-br from-teal-50 to-teal-100 dark:from-teal-900/20 dark:to-teal-800/20 p-6 rounded-xl border border-teal-200 dark:border-teal-700 hover:shadow-lg transition-all duration-300">
+                  <div className="flex items-start space-x-3">
+                    <div className="w-10 h-10 bg-teal-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <FaCircle className="text-white text-sm" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Status</p>
+                      <p className="font-semibold text-gray-900 dark:text-white flex items-center break-words">
+                        <span className="w-2 h-2 bg-green-500 rounded-full mr-2 flex-shrink-0"></span>
+                        Available for Projects
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Call to Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-4 pt-6">
+                <a
+                  href="/contact"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-8 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:scale-105"
+                >
+                  Hire Me
+                </a>
+                <a
+                  href={userProfile?.cv_url || "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`flex-1 font-semibold py-4 px-8 rounded-xl text-center transition-all duration-300 hover:shadow-lg hover:scale-105 ${
+                    userProfile?.cv_url 
+                      ? 'bg-gray-800 hover:bg-gray-900 dark:bg-gray-700 dark:hover:bg-gray-600 text-white' 
+                      : 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                  }`}
+                  onClick={(e) => {
+                    if (!userProfile?.cv_url) {
+                      e.preventDefault();
+                      alert('CV URL not set. Please add it in the admin profile.');
+                    }
+                  }}
+                >
+                  Download CV
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       </section>

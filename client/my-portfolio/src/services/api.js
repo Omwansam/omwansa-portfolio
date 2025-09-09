@@ -4,6 +4,8 @@ import { API_CONFIG } from './config';
 class ApiService {
   constructor() {
     this.baseURL = API_CONFIG.BASE_URL;
+    // Extract base URL without /api for static files
+    this.staticBaseURL = this.baseURL.replace('/api', '');
   }
 
   // Generic request method
@@ -71,7 +73,7 @@ class ApiService {
 
   // Authentication methods
   async login(email, password) {
-    return this.request('/login', {
+    return this.request('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
@@ -83,7 +85,7 @@ class ApiService {
       throw new Error('No refresh token available');
     }
 
-    const url = `${this.baseURL}/refresh`;
+    const url = `${this.baseURL}/auth/refresh`;
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -107,23 +109,53 @@ class ApiService {
   }
 
   async getProfile() {
-    return this.request('/profile');
+    return this.request('/auth/profile');
+  }
+
+  async getPublicProfile() {
+    return this.request('/auth/public-profile', { requiresAuth: false });
   }
 
   async updateProfile(profileData) {
-    return this.request('/profile', {
+    return this.request('/auth/profile', {
       method: 'PUT',
       body: JSON.stringify(profileData),
     });
   }
 
   async changePassword(currentPassword, newPassword) {
-    return this.request('/change-password', {
+    return this.request('/auth/change-password', {
       method: 'PUT',
       body: JSON.stringify({
         current_password: currentPassword,
         new_password: newPassword,
       }),
+    });
+  }
+
+  // Profile images upload
+  async uploadProfileImage(imageType, file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    const token = this.getAccessToken();
+    const res = await fetch(`${this.baseURL}/auth/profile/upload/${imageType}`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      body: formData,
+    });
+    if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
+    return res.json();
+  }
+
+  // Get user images
+  async getUserImages() {
+    return this.request('/auth/profile/images');
+  }
+
+  // Delete user image
+  async deleteUserImage(imageId) {
+    return this.request(`/auth/profile/images/${imageId}`, {
+      method: 'DELETE',
     });
   }
 
@@ -351,6 +383,13 @@ class ApiService {
 
   isAuthenticated() {
     return !!this.getAccessToken();
+  }
+
+  // Helper method to convert relative URLs to full URLs for static files
+  getFullImageUrl(relativeUrl) {
+    if (!relativeUrl) return null;
+    if (relativeUrl.startsWith('http')) return relativeUrl; // Already full URL
+    return `${this.staticBaseURL}${relativeUrl}`;
   }
 }
 

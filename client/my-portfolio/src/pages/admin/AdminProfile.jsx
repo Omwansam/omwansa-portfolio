@@ -14,7 +14,13 @@ const AdminProfile = () => {
     github_url: '',
     linkedin_url: '',
     twitter_url: '',
-    avatar_url: ''
+    instagram_url: '',
+    whatsapp_url: '',
+    email_url: '',
+    avatar_url: '',
+    hero_image_url: '',
+    about_image_url: '',
+    cv_url: ''
   });
 
   const [activeTab, setActiveTab] = useState('personal');
@@ -23,16 +29,20 @@ const AdminProfile = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [images, setImages] = useState([]);
+  const [uploading, setUploading] = useState(false);
 
   const tabs = [
     { id: 'personal', name: 'Personal Info', icon: '👤' },
     { id: 'social', name: 'Social Links', icon: '🔗' },
+    { id: 'images', name: 'Images', icon: '🖼️' },
     { id: 'security', name: 'Security', icon: '🔒' },
     { id: 'preferences', name: 'Preferences', icon: '⚙️' }
   ];
 
   useEffect(() => {
     fetchProfile();
+    fetchImages();
   }, []);
 
   const fetchProfile = async () => {
@@ -45,6 +55,15 @@ const AdminProfile = () => {
       setError('Failed to fetch profile');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchImages = async () => {
+    try {
+      const data = await apiService.getUserImages();
+      setImages(data.images || []);
+    } catch (error) {
+      console.error('Error fetching images:', error);
     }
   };
 
@@ -73,11 +92,34 @@ const AdminProfile = () => {
     }
   };
 
-  const handleAvatarUpload = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      // Here you would typically upload the file and get the URL
-      console.log('Uploading avatar:', file);
+  const handleImageUpload = async (imageType, file) => {
+    if (!file) return;
+    
+    setUploading(true);
+    try {
+      const response = await apiService.uploadProfileImage(imageType, file);
+      handleInputChange(`${imageType}_image_url`, response.url);
+      setSuccess(`${imageType.charAt(0).toUpperCase() + imageType.slice(1)} image uploaded successfully!`);
+      await fetchImages(); // Refresh images list
+    } catch (error) {
+      console.error(`${imageType} image upload failed:`, error);
+      setError(`Failed to upload ${imageType} image`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleImageDelete = async (imageId) => {
+    if (!window.confirm('Are you sure you want to delete this image?')) return;
+    
+    try {
+      await apiService.deleteUserImage(imageId);
+      setSuccess('Image deleted successfully!');
+      await fetchImages(); // Refresh images list
+      await fetchProfile(); // Refresh profile to update URLs
+    } catch (error) {
+      console.error('Image deletion failed:', error);
+      setError('Failed to delete image');
     }
   };
 
@@ -191,6 +233,44 @@ const AdminProfile = () => {
           placeholder="Tell us about yourself..."
         />
       </div>
+
+      {/* Hero & About Image Uploads */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Hero Image
+          </label>
+          <div className="flex items-center gap-4">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => handleImageUpload('hero', e.target.files?.[0])}
+              disabled={uploading}
+              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
+            />
+          </div>
+          {profile.hero_image_url && (
+            <img src={apiService.getFullImageUrl(profile.hero_image_url)} alt="Hero" className="mt-3 h-24 w-24 object-cover rounded-lg" />
+          )}
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            About Image
+          </label>
+          <div className="flex items-center gap-4">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => handleImageUpload('about', e.target.files?.[0])}
+              disabled={uploading}
+              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
+            />
+          </div>
+          {profile.about_image_url && (
+            <img src={apiService.getFullImageUrl(profile.about_image_url)} alt="About" className="mt-3 h-24 w-24 object-cover rounded-lg" />
+          )}
+        </div>
+      </div>
     </div>
   );
 
@@ -246,6 +326,188 @@ const AdminProfile = () => {
           className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           placeholder="https://twitter.com/username"
         />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          Instagram
+        </label>
+        <input
+          type="url"
+          value={profile.instagram_url}
+          onChange={(e) => handleInputChange('instagram_url', e.target.value)}
+          className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          placeholder="https://instagram.com/username"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          WhatsApp
+        </label>
+        <input
+          type="text"
+          value={profile.whatsapp_url}
+          onChange={(e) => handleInputChange('whatsapp_url', e.target.value)}
+          className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          placeholder="254700000000 (phone number without +)"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          Instagram
+        </label>
+        <input
+          type="url"
+          value={profile.instagram_url}
+          onChange={(e) => handleInputChange('instagram_url', e.target.value)}
+          className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          placeholder="https://instagram.com/username"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          WhatsApp
+        </label>
+        <input
+          type="url"
+          value={profile.whatsapp_url}
+          onChange={(e) => handleInputChange('whatsapp_url', e.target.value)}
+          className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          placeholder="https://wa.me/your-number"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          Email URL
+        </label>
+        <input
+          type="url"
+          value={profile.email_url}
+          onChange={(e) => handleInputChange('email_url', e.target.value)}
+          className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          placeholder="mailto:your-email@example.com"
+        />
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+          Email link that will be used to reveal your email in the info cards
+        </p>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          CV/Resume URL
+        </label>
+        <input
+          type="url"
+          value={profile.cv_url}
+          onChange={(e) => handleInputChange('cv_url', e.target.value)}
+          className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          placeholder="https://drive.google.com/file/d/YOUR_FILE_ID/view?usp=sharing"
+        />
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+          Upload your CV to Google Drive and paste the sharing link here
+        </p>
+      </div>
+    </div>
+  );
+
+  const renderImages = () => (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Image Management</h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+          Upload and manage your profile images. Images are stored securely and can be used across your portfolio.
+        </p>
+      </div>
+
+      {/* Upload Sections */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Hero Image Upload */}
+        <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+          <h4 className="font-medium text-gray-900 dark:text-white mb-3">Hero Image</h4>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => handleImageUpload('hero', e.target.files?.[0])}
+            disabled={uploading}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50 text-sm"
+          />
+          {profile.hero_image_url && (
+            <div className="mt-3">
+              <img src={apiService.getFullImageUrl(profile.hero_image_url)} alt="Hero" className="w-full h-24 object-cover rounded-lg" />
+            </div>
+          )}
+        </div>
+
+        {/* About Image Upload */}
+        <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+          <h4 className="font-medium text-gray-900 dark:text-white mb-3">About Image</h4>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => handleImageUpload('about', e.target.files?.[0])}
+            disabled={uploading}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50 text-sm"
+          />
+          {profile.about_image_url && (
+            <div className="mt-3">
+              <img src={apiService.getFullImageUrl(profile.about_image_url)} alt="About" className="w-full h-24 object-cover rounded-lg" />
+            </div>
+          )}
+        </div>
+
+        {/* Avatar Upload */}
+        <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+          <h4 className="font-medium text-gray-900 dark:text-white mb-3">Avatar</h4>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => handleImageUpload('avatar', e.target.files?.[0])}
+            disabled={uploading}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50 text-sm"
+          />
+          {profile.avatar_url && (
+            <div className="mt-3">
+              <img src={apiService.getFullImageUrl(profile.avatar_url)} alt="Avatar" className="w-full h-24 object-cover rounded-lg" />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Images List */}
+      <div>
+        <h4 className="font-medium text-gray-900 dark:text-white mb-4">All Images ({images.length})</h4>
+        {images.length === 0 ? (
+          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+            <p>No images uploaded yet.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            {images.map((image) => (
+              <div key={image.id} className="relative group">
+                <img
+                  src={apiService.getFullImageUrl(image.file_url)}
+                  alt={image.original_filename}
+                  className="w-full h-24 object-cover rounded-lg border border-gray-200 dark:border-gray-700"
+                />
+                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-200 rounded-lg flex items-center justify-center">
+                  <button
+                    onClick={() => handleImageDelete(image.id)}
+                    className="opacity-0 group-hover:opacity-100 bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600 transition-all duration-200"
+                  >
+                    Delete
+                  </button>
+                </div>
+                <div className="mt-1 text-xs text-gray-600 dark:text-gray-400 truncate">
+                  {image.image_type} - {Math.round(image.file_size / 1024)}KB
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -389,6 +651,7 @@ const AdminProfile = () => {
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
         {activeTab === 'personal' && renderPersonalInfo()}
         {activeTab === 'social' && renderSocialLinks()}
+        {activeTab === 'images' && renderImages()}
         {activeTab === 'security' && renderSecurity()}
         {activeTab === 'preferences' && renderPreferences()}
       </div>
@@ -419,7 +682,7 @@ const AdminProfile = () => {
               <input
                 type="file"
                 accept="image/*"
-                onChange={handleAvatarUpload}
+                onChange={(e) => handleImageUpload('avatar', e.target.files?.[0])}
                 className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               />
 
