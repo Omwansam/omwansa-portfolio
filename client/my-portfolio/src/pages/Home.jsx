@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { FaMapMarkerAlt, FaCircle, FaLinkedin, FaTwitter, FaGithub, FaInstagram, FaWhatsapp, FaGlobe } from 'react-icons/fa';
 import { apiService } from '../services';
@@ -11,6 +11,60 @@ const Home = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
   const [portfolioStats, setPortfolioStats] = useState(null);
+  const [projects, setProjects] = useState([]);
+  const carouselRef = useRef(null);
+
+  // Create infinite carousel by duplicating projects
+  const infiniteProjects = useMemo(() => {
+    if (projects.length === 0) return [];
+    // Duplicate the projects array to create seamless loop
+    return [...projects, ...projects];
+  }, [projects]);
+
+  // Debug: Log when projects change
+  useEffect(() => {
+    console.log('Projects state updated:', projects.length, 'projects');
+    if (projects.length > 0) {
+      console.log('Project titles:', projects.map(p => p.title));
+    }
+  }, [projects]);
+
+  // Helper function to determine project category
+  const getProjectCategory = (project) => {
+    const title = project.title?.toLowerCase() || '';
+    
+    // Handle technologies - it could be a string, array, or JSON string
+    let technologiesString = '';
+    if (project.technologies) {
+      if (typeof project.technologies === 'string') {
+        try {
+          // Try to parse as JSON first
+          const parsed = JSON.parse(project.technologies);
+          if (Array.isArray(parsed)) {
+            technologiesString = parsed.join(' ').toLowerCase();
+          } else {
+            technologiesString = project.technologies.toLowerCase();
+          }
+        } catch {
+          // If not JSON, treat as regular string
+          technologiesString = project.technologies.toLowerCase();
+        }
+      } else if (Array.isArray(project.technologies)) {
+        technologiesString = project.technologies.join(' ').toLowerCase();
+      }
+    }
+    
+    if (title.includes('mobile') || title.includes('app') || technologiesString.includes('react native') || technologiesString.includes('flutter')) {
+      return { name: 'Mobile', color: 'bg-green-500', icon: '📱' };
+    }
+    if (title.includes('api') || title.includes('backend') || technologiesString.includes('api') || technologiesString.includes('express') || technologiesString.includes('fastapi')) {
+      return { name: 'API', color: 'bg-purple-500', icon: '🔌' };
+    }
+    if (title.includes('ai') || title.includes('ml') || technologiesString.includes('machine learning') || technologiesString.includes('artificial intelligence')) {
+      return { name: 'AI/ML', color: 'bg-orange-500', icon: '🤖' };
+    }
+    return { name: 'Web', color: 'bg-blue-500', icon: '🌐' };
+  };
 
   // Memoize roles array to prevent unnecessary re-renders
   const roles = useMemo(() => [
@@ -129,29 +183,6 @@ const Home = () => {
     }
   ];
 
-  const recentProjects = [
-    {
-      title: 'E-commerce Platform',
-      description: 'Modern online store with payment integration',
-      image: '🛒',
-      technologies: ['Next.js', 'Stripe', 'PostgreSQL'],
-      link: '/projects'
-    },
-    {
-      title: 'Restaurant Management',
-      description: 'Complete POS and inventory system',
-      image: '🍽️',
-      technologies: ['React', 'Node.js', 'MongoDB'],
-      link: '/projects'
-    },
-    {
-      title: 'Real Estate Portal',
-      description: 'Property listing with advanced search',
-      image: '🏠',
-      technologies: ['Vue.js', 'Express.js', 'Google Maps'],
-      link: '/projects'
-    }
-  ];
 
   const processSteps = [
     {
@@ -180,7 +211,7 @@ const Home = () => {
     }
   ];
 
-  // Fetch user profile and portfolio stats
+  // Fetch user profile, portfolio stats, and projects
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -191,6 +222,11 @@ const Home = () => {
         // Fetch portfolio stats
         const stats = await apiService.getPortfolioStats();
         setPortfolioStats(stats);
+        
+        // Fetch projects - get all projects for the carousel
+        const projectsData = await apiService.getProjects();
+        console.log('Fetched projects:', projectsData);
+        setProjects(projectsData || []);
       } catch (error) {
         console.error('Error fetching data:', error);
       }
@@ -231,7 +267,35 @@ const Home = () => {
     return () => clearInterval(interval);
   }, [testimonials.length]);
 
+  // Continuous rotation effect
+  useEffect(() => {
+    if (projects.length > 0 && carouselRef.current) {
+      const startAnimation = () => {
+        if (carouselRef.current) {
+          carouselRef.current.style.animation = 'none';
+          carouselRef.current.offsetHeight; // Force reflow
+          carouselRef.current.style.animation = `slideLeft ${projects.length * 4}s linear infinite`;
+        }
+      };
+      
+      startAnimation();
+    }
+  }, [projects.length]);
+
   return (
+    <>
+      <style>
+        {`
+          @keyframes slideLeft {
+            0% {
+              transform: translateX(0);
+            }
+            100% {
+              transform: translateX(-50%);
+            }
+          }
+        `}
+      </style>
     <div className="min-h-screen w-full">
       {/* Hero Section */}
       <section className="relative w-full bg-gradient-to-br from-blue-600 via-blue-700 to-purple-600 text-white py-8 min-h-[85vh] flex items-center">
@@ -571,30 +635,116 @@ const Home = () => {
               Take a look at some of my latest work and see the quality I deliver.
             </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {recentProjects.map((project, index) => (
-              <Link key={index} to={project.link} className="group">
-                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300">
-                  <div className="p-8">
-                    <div className="text-6xl mb-4 group-hover:scale-110 transition-transform duration-300">
-                      {project.image}
+          
+          {/* Projects Carousel - Continuous Rotating Wheel Effect */}
+          {projects.length > 0 ? (
+            <div className="relative w-full">
+              {/* Carousel Container */}
+              <div className="relative h-96 overflow-hidden">
+                <div 
+                  ref={carouselRef}
+                  className="flex"
+                  style={{ 
+                    width: `${infiniteProjects.length * 320}px`
+                  }}
+                >
+                  {infiniteProjects.map((project, index) => {
+                    const category = getProjectCategory(project);
+                    return (
+                      <div 
+                        key={project.id || index} 
+                        className="w-80 flex-shrink-0 px-4"
+                      >
+                        <Link to="/projects" className="block group h-full">
+                          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 h-full flex flex-col transform hover:scale-105">
+                            {/* Project Image */}
+                            <div className="relative w-full h-48 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800">
+                              {project.image_url ? (
+                                <img
+                                  src={apiService.getFullImageUrl(project.image_url)}
+                                  alt={project.title}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <div className="text-4xl opacity-50">
+                                    {category.icon}
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {/* Category Badge */}
+                              <div className="absolute top-3 left-3">
+                                <span className={`${category.color} text-white px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1`}>
+                                  <span className="text-xs">{category.icon}</span>
+                                  {category.name}
+                                </span>
+                              </div>
                     </div>
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                            
+                            {/* Project Content */}
+                            <div className="p-4 flex-1 flex flex-col">
+                              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2">
                       {project.title}
                     </h3>
-                    <p className="text-gray-600 dark:text-gray-300 mb-4">{project.description}</p>
-                    <div className="flex flex-wrap gap-2">
-                      {project.technologies.map((tech, idx) => (
-                        <span key={idx} className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full text-xs font-medium">
-                          {tech}
-                        </span>
-                      ))}
+                              <p className="text-gray-600 dark:text-gray-300 mb-3 text-sm overflow-hidden" style={{
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical'
+                              }}>
+                                {project.short_description || project.description}
+                              </p>
+                              
+                              {/* Project Links */}
+                              <div className="flex gap-2 mt-auto">
+                                {project.live_url && (
+                                  <a
+                                    href={project.live_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-xs font-medium"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <FaGlobe className="text-xs" />
+                                    Demo
+                                  </a>
+                                )}
+                                {project.github_url && (
+                                  <a
+                                    href={project.github_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-1 text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors text-xs font-medium"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <FaGithub className="text-xs" />
+                                    Code
+                                  </a>
+                                )}
                     </div>
                   </div>
                 </div>
               </Link>
-            ))}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              
+              
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <div className="text-6xl mb-4 opacity-50">🚀</div>
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                Projects Coming Soon
+              </h3>
+              <p className="text-gray-600 dark:text-gray-300">
+                I'm working on some amazing projects. Check back soon!
+              </p>
           </div>
+          )}
+          
           <div className="text-center mt-12">
             <Link
               to="/projects"
@@ -711,6 +861,7 @@ const Home = () => {
         </div>
       </section>
     </div>
+    </>
   );
 };
 

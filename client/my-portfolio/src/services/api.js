@@ -357,6 +357,29 @@ class ApiService {
     });
   }
 
+  async replyToContact(contactId, { subject, message }) {
+    return this.request(`/contact/${contactId}/reply`, {
+      method: 'POST',
+      body: JSON.stringify({ subject, message }),
+    });
+  }
+
+  async submitContact(payload) {
+    return this.request('/contact', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: payload.name,
+        email: payload.email,
+        subject: payload.subject || '',
+        message: payload.message,
+        phone: payload.phone,
+        company: payload.company,
+        projectType: payload.projectType,
+      }),
+      requiresAuth: false,
+    });
+  }
+
   // Portfolio/Stats API
   async getPortfolioStats() {
     return this.request('/portfolio/stats');

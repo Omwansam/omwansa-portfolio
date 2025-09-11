@@ -2,7 +2,7 @@ from flask import Flask, jsonify, send_from_directory
 from flask_cors import CORS
 from models import User
 
-from extensions import db, migrate, jwt
+from extensions import db, migrate, jwt, mail
 from config import Config
 
 # Import route blueprints
@@ -25,6 +25,7 @@ app.config.from_object(Config)
 db.init_app(app)
 migrate.init_app(app, db)
 jwt.init_app(app)
+mail.init_app(app)
 
 # Enable CORS
 CORS(app, resources={r"/*": {"origins": "*"}})

@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from extensions import db
+from extensions import db, mail
+from flask_mail import Message
 from models import Contact, User
 import re
 
@@ -57,7 +58,52 @@ def submit_contact():
     try:
         db.session.add(contact)
         db.session.commit()
-        return jsonify({"message": "Message sent successfully"}), 201
+
+        # Send notification email to site owner
+        notify_errors = None
+        try:
+            subject_line = f"New contact: {subject or 'No subject'} from {name}"
+            body = (
+                f"You have received a new contact message from your portfolio site.\n\n"
+                f"Name: {name}\n"
+                f"Email: {email}\n"
+                f"Subject: {subject or 'N/A'}\n\n"
+                f"Message:\n{message}\n\n"
+                f"Submitted via API /contact"
+            )
+
+            owner_email = mail.app.config.get('MAIL_USERNAME') or mail.app.config.get('MAIL_DEFAULT_SENDER')
+            if isinstance(owner_email, (list, tuple)):
+                owner_email = owner_email[-1]
+
+            msg_owner = Message(subject=subject_line, recipients=[owner_email])
+            msg_owner.body = body
+            mail.send(msg_owner)
+        except Exception as mail_err:
+            notify_errors = str(mail_err)
+
+        # Send acknowledgement to user
+        ack_errors = None
+        try:
+            ack_subject = "Thanks for contacting me"
+            ack_body = (
+                f"Hi {name},\n\n"
+                f"Thanks for reaching out! I have received your message and will get back to you shortly.\n\n"
+                f"Your message:\n{message}\n\n"
+                f"Regards,\nPortfolio"
+            )
+            msg_user = Message(subject=ack_subject, recipients=[email])
+            msg_user.body = ack_body
+            mail.send(msg_user)
+        except Exception as ack_err:
+            ack_errors = str(ack_err)
+
+        resp = {"message": "Message sent successfully"}
+        if notify_errors:
+            resp["mail_notification_error"] = notify_errors
+        if ack_errors:
+            resp["mail_ack_error"] = ack_errors
+        return jsonify(resp), 201
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": "An error occurred while sending the message", "details": str(e)}), 500
@@ -174,6 +220,49 @@ def delete_contact(contact_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": "An error occurred while deleting the message", "details": str(e)}), 500
+
+
+@contact_bp.route('/contact/<int:contact_id>/reply', methods=['POST'])
+@jwt_required()
+def reply_contact(contact_id):
+    """Reply to a contact message (admin only) - sends an email to the contact sender"""
+    user = get_current_user()
+    if not user or not user.is_admin:
+        return jsonify({"error": "Admin access required"}), 403
+
+    contact = Contact.query.get_or_404(contact_id)
+
+    data = request.get_json() or {}
+    reply_subject = (data.get('subject') or '').strip()
+    reply_message = (data.get('message') or '').strip()
+
+    if not reply_message:
+        return jsonify({"error": "Reply message is required"}), 400
+
+    if not reply_subject:
+        base = contact.subject or 'your message'
+        reply_subject = f"Re: {base}"
+
+    try:
+        # Determine sender and reply-to
+        default_sender = mail.app.config.get('MAIL_DEFAULT_SENDER')
+        owner_email = mail.app.config.get('MAIL_USERNAME') or (default_sender[-1] if isinstance(default_sender, (list, tuple)) else default_sender)
+
+        msg = Message(subject=reply_subject, recipients=[contact.email])
+        msg.body = reply_message
+        if owner_email:
+            msg.reply_to = owner_email
+
+        mail.send(msg)
+
+        # Optionally mark as read after replying
+        contact.read = True
+        db.session.commit()
+
+        return jsonify({"message": "Reply sent successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Failed to send reply", "details": str(e)}), 500
 
 
 @contact_bp.route('/contact/stats', methods=['GET'])

@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { apiService } from '../services';
+import { FaLinkedin, FaGithub, FaTwitter, FaInstagram, FaWhatsapp, FaGlobe } from 'react-icons/fa';
 
 const Contact = () => {
   const [formData, setFormData] = useState({
@@ -12,6 +14,22 @@ const Contact = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const profile = await apiService.getPublicProfile();
+        setUserProfile(profile);
+      } catch (err) {
+        console.error('Failed to load public profile for contact page:', err);
+      } finally {
+        setLoadingProfile(false);
+      }
+    };
+    fetchProfile();
+  }, []);
 
   const handleChange = (e) => {
     setFormData({
@@ -24,11 +42,19 @@ const Contact = () => {
     e.preventDefault();
     setIsSubmitting(true);
     
-    // Simulate form submission
-    setTimeout(() => {
-      console.log('Form submitted:', formData);
+    try {
+      const res = await apiService.submitContact({
+        name: formData.name,
+        email: formData.email,
+        subject: formData.subject,
+        message: formData.message,
+        phone: formData.phone,
+        company: formData.company,
+        projectType: formData.projectType,
+      });
+
+      if (res && res.message) {
       setSubmitStatus('success');
-      setIsSubmitting(false);
       setFormData({
         name: '',
         email: '',
@@ -38,35 +64,103 @@ const Contact = () => {
         message: '',
         projectType: ''
       });
-    }, 2000);
+      } else {
+        setSubmitStatus('error');
+      }
+    } catch (error) {
+      console.error('Contact submit failed:', error);
+      setSubmitStatus('error');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const contactInfo = [
-    {
+  const contactInfo = useMemo(() => {
+    const items = [];
+    const emailText = userProfile?.email || '';
+    const emailHref = userProfile?.email_url || (emailText ? `mailto:${emailText}` : null);
+    if (emailText || emailHref) {
+      items.push({
       icon: '📧',
       title: 'Email',
-      details: 'arnold@example.com',
+        details: emailText || '—',
+        link: emailHref || undefined,
       description: 'Send me an email anytime'
-    },
-    {
+      });
+    }
+    if (userProfile?.phone) {
+      items.push({
       icon: '📱',
       title: 'Phone',
-      details: '+254 700 000 000',
+        details: userProfile.phone,
+        link: `tel:${userProfile.phone.replace(/\s+/g, '')}`,
       description: 'Call me for urgent matters'
-    },
-    {
+      });
+    }
+    if (userProfile?.location) {
+      items.push({
       icon: '📍',
       title: 'Location',
-      details: 'Nairobi, Kenya',
+        details: userProfile.location,
       description: 'Available for local meetings'
-    },
-    {
+      });
+    }
+    if (userProfile?.linkedin_url) {
+      items.push({
       icon: '💼',
       title: 'LinkedIn',
-      details: 'linkedin.com/in/omwansa-arnold',
+        details: userProfile.linkedin_url.replace(/^https?:\/\//, ''),
+        link: userProfile.linkedin_url,
       description: 'Connect with me professionally'
+      });
     }
-  ];
+    if (userProfile?.github_url) {
+      items.push({
+        icon: '🐙',
+        title: 'GitHub',
+        details: userProfile.github_url.replace(/^https?:\/\//, ''),
+        link: userProfile.github_url,
+        description: 'View my code and projects'
+      });
+    }
+    if (userProfile?.twitter_url) {
+      items.push({
+        icon: '🐦',
+        title: 'Twitter',
+        details: userProfile.twitter_url.replace(/^https?:\/\//, ''),
+        link: userProfile.twitter_url,
+        description: 'Follow my updates'
+      });
+    }
+    if (userProfile?.instagram_url) {
+      items.push({
+        icon: '📷',
+        title: 'Instagram',
+        details: userProfile.instagram_url.replace(/^https?:\/\//, ''),
+        link: userProfile.instagram_url,
+        description: 'Behind the scenes and visuals'
+      });
+    }
+    if (userProfile?.website_url) {
+      items.push({
+        icon: '🌐',
+        title: 'Website',
+        details: userProfile.website_url.replace(/^https?:\/\//, ''),
+        link: userProfile.website_url,
+        description: 'Visit my website'
+      });
+    }
+    if (userProfile?.whatsapp_url) {
+      items.push({
+        icon: '🟢',
+        title: 'WhatsApp',
+        details: 'Chat on WhatsApp',
+        link: userProfile.whatsapp_url,
+        description: 'Quick messaging'
+      });
+    }
+    return items;
+  }, [userProfile]);
 
   const projectTypes = [
     'Web Application',
@@ -117,6 +211,17 @@ const Contact = () => {
                     </div>
                   </div>
                 )}
+                {submitStatus === 'error' && (
+                  <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+                    <div className="flex items-center">
+                      <span className="text-2xl mr-3">⚠️</span>
+                      <div>
+                        <h3 className="font-semibold">Failed to send message</h3>
+                        <p>Please try again later or contact me via email.</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -130,7 +235,7 @@ const Contact = () => {
                         name="name"
                         value={formData.name}
                         onChange={handleChange}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white dark:bg-white caret-pink-600 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors text-black dark:text-black placeholder-gray-500 dark:placeholder-gray-500"
                         required
                       />
                     </div>
@@ -144,7 +249,7 @@ const Contact = () => {
                         name="email"
                         value={formData.email}
                         onChange={handleChange}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white dark:bg-white caret-pink-600 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors text-black dark:text-black placeholder-gray-500 dark:placeholder-gray-500"
                         required
                       />
                     </div>
@@ -161,7 +266,7 @@ const Contact = () => {
                         name="phone"
                         value={formData.phone}
                         onChange={handleChange}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white dark:bg-white caret-pink-600 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors text-black dark:text-black placeholder-gray-500 dark:placeholder-gray-500"
                       />
                     </div>
                     <div>
@@ -174,27 +279,25 @@ const Contact = () => {
                         name="company"
                         value={formData.company}
                         onChange={handleChange}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white dark:bg-white caret-pink-600 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors text-black dark:text-black placeholder-gray-500 dark:placeholder-gray-500"
                       />
                     </div>
                   </div>
 
                   <div>
                     <label htmlFor="projectType" className="block text-sm font-medium text-gray-700 mb-2">
-                      Project Type
+                      Project Type (optional)
                     </label>
-                    <select
+                    <input
+                      type="text"
                       id="projectType"
                       name="projectType"
                       value={formData.projectType}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors"
-                    >
-                      <option value="">Select a project type</option>
-                      {projectTypes.map((type) => (
-                        <option key={type} value={type}>{type}</option>
-                      ))}
-                    </select>
+                      placeholder="e.g., Web App, Mobile App, API, UI/UX, Consulting"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white dark:bg-white caret-pink-600 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors text-black dark:text-black placeholder-gray-500 dark:placeholder-gray-500"
+                      autoComplete="off"
+                    />
                   </div>
 
                   <div>
@@ -207,7 +310,7 @@ const Contact = () => {
                       name="subject"
                       value={formData.subject}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white dark:bg-white caret-pink-600 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors text-black dark:text-black placeholder-gray-500 dark:placeholder-gray-500"
                       required
                     />
                   </div>
@@ -222,7 +325,7 @@ const Contact = () => {
                       rows={6}
                       value={formData.message}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors resize-none"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white dark:bg-white caret-pink-600 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors resize-none text-black dark:text-black placeholder-gray-500 dark:placeholder-gray-500"
                       placeholder="Tell me about your project, timeline, and any specific requirements..."
                       required
                     />
@@ -256,7 +359,13 @@ const Contact = () => {
                       <div className="text-3xl">{info.icon}</div>
                       <div>
                         <h4 className="font-semibold text-gray-900 mb-1">{info.title}</h4>
+                        {info.link ? (
+                          <a href={info.link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-700 font-medium break-all">
+                            {info.details}
+                          </a>
+                        ) : (
                         <p className="text-gray-700 font-medium">{info.details}</p>
+                        )}
                         <p className="text-gray-500 text-sm">{info.description}</p>
                       </div>
                     </div>
@@ -280,19 +389,23 @@ const Contact = () => {
               {/* Social Links */}
               <div className="bg-white rounded-2xl shadow-lg p-8">
                 <h3 className="text-xl font-bold text-gray-900 mb-4">Follow me</h3>
-                <div className="flex space-x-4">
-                  <a href="#" className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center text-white hover:bg-blue-700 transition-colors">
-                    <span className="text-lg">💼</span>
-                  </a>
-                  <a href="#" className="w-12 h-12 bg-gray-800 rounded-lg flex items-center justify-center text-white hover:bg-gray-900 transition-colors">
-                    <span className="text-lg">🐙</span>
-                  </a>
-                  <a href="#" className="w-12 h-12 bg-blue-400 rounded-lg flex items-center justify-center text-white hover:bg-blue-500 transition-colors">
-                    <span className="text-lg">🐦</span>
-                  </a>
-                  <a href="#" className="w-12 h-12 bg-pink-600 rounded-lg flex items-center justify-center text-white hover:bg-pink-700 transition-colors">
-                    <span className="text-lg">📷</span>
-                  </a>
+                <div className="flex flex-wrap gap-3">
+                  {[
+                    { key: 'linkedin_url', bg: 'bg-blue-600', Icon: FaLinkedin, title: 'LinkedIn' },
+                    { key: 'github_url', bg: 'bg-gray-800', Icon: FaGithub, title: 'GitHub' },
+                    { key: 'twitter_url', bg: 'bg-sky-500', Icon: FaTwitter, title: 'Twitter' },
+                    { key: 'instagram_url', bg: 'bg-pink-600', Icon: FaInstagram, title: 'Instagram' },
+                    { key: 'whatsapp_url', bg: 'bg-green-600', Icon: FaWhatsapp, title: 'WhatsApp' },
+                    { key: 'website_url', bg: 'bg-indigo-600', Icon: FaGlobe, title: 'Website' },
+                  ].map((s) => {
+                    const href = userProfile?.[s.key];
+                    if (!href) return null;
+                    return (
+                      <a key={s.key} href={href} target="_blank" rel="noopener noreferrer" className={`w-12 h-12 ${s.bg} rounded-lg flex items-center justify-center text-white hover:opacity-90 transition-colors`} title={s.title}>
+                        <s.Icon className="text-xl" />
+                      </a>
+                    );
+                  })}
                 </div>
               </div>
             </div>

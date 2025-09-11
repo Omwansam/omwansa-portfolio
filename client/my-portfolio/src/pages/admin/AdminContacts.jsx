@@ -6,6 +6,9 @@ const AdminContacts = () => {
   const [loading, setLoading] = useState(true);
   const [selectedContact, setSelectedContact] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [showReplyModal, setShowReplyModal] = useState(false);
+  const [replySubject, setReplySubject] = useState('');
+  const [replyMessage, setReplyMessage] = useState('');
   const [filter, setFilter] = useState('all');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -91,7 +94,35 @@ const AdminContacts = () => {
   };
 
   const handleReply = (contactId) => {
-    console.log('Reply to:', contactId);
+    const contact = contacts.find(c => c.id === contactId);
+    if (!contact) return;
+    setSelectedContact(contact);
+    setReplySubject(contact.subject?.startsWith('Re:') ? contact.subject : `Re: ${contact.subject || 'your message'}`);
+    setReplyMessage('');
+    setShowReplyModal(true);
+  };
+
+  const sendReply = async () => {
+    if (!selectedContact) return;
+    if (!replyMessage.trim()) {
+      setError('Reply message is required');
+      setTimeout(() => setError(''), 2500);
+      return;
+    }
+    try {
+      await apiService.replyToContact(selectedContact.id, { subject: replySubject, message: replyMessage });
+      setSuccess('Reply sent successfully');
+      setContacts(prev => prev.map(c => c.id === selectedContact.id ? { ...c, status: 'replied' } : c));
+      setShowReplyModal(false);
+      setSelectedContact(null);
+      setReplySubject('');
+      setReplyMessage('');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      console.error('Failed to send reply', err);
+      setError('Failed to send reply');
+      setTimeout(() => setError(''), 3000);
+    }
   };
 
   const getStatusColor = (status) => {
@@ -394,6 +425,41 @@ const AdminContacts = () => {
                   )}
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reply Modal */}
+      {showReplyModal && selectedContact && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-xl w-full">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">Reply to {selectedContact.name}</h3>
+              <button
+                onClick={() => { setShowReplyModal(false); setReplySubject(''); setReplyMessage(''); }}
+                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">To</label>
+                <input disabled value={selectedContact.email} className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Subject</label>
+                <input value={replySubject} onChange={e => setReplySubject(e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white dark:bg-white text-black" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Message</label>
+                <textarea value={replyMessage} onChange={e => setReplyMessage(e.target.value)} rows={6} className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white dark:bg-white text-black resize-none" placeholder="Type your reply..." />
+              </div>
+            </div>
+            <div className="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
+              <button onClick={() => { setShowReplyModal(false); setReplySubject(''); setReplyMessage(''); }} className="px-5 py-3 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Cancel</button>
+              <button onClick={sendReply} className="px-5 py-3 bg-green-600 dark:bg-green-700 text-white rounded-lg hover:bg-green-700 dark:hover:bg-green-600">Send Reply</button>
             </div>
           </div>
         </div>

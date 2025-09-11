@@ -21,3 +21,17 @@ class Config:
 
     # Ensure upload folder exists
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+    # Mail settings (loaded from .env)
+    MAIL_SERVER = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
+    MAIL_PORT = int(os.getenv('MAIL_PORT', 587))
+    MAIL_USE_TLS = os.getenv('MAIL_USE_TLS', 'True').lower() == 'true'
+    MAIL_USE_SSL = os.getenv('MAIL_USE_SSL', 'False').lower() == 'false' and False
+    MAIL_USERNAME = os.getenv('MAIL_USERNAME')
+    MAIL_PASSWORD = os.getenv('MAIL_PASSWORD')
+    # For Gmail, the sender email should be the authenticated account (MAIL_USERNAME)
+    _mail_username = os.getenv('MAIL_USERNAME')
+    MAIL_DEFAULT_SENDER = (
+        os.getenv('MAIL_DEFAULT_NAME', 'My Website'),
+        _mail_username or os.getenv('MAIL_DEFAULT_EMAIL', 'noreply@example.com')
+    )
