@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, send_from_directory
 import os
 from flask_cors import CORS
-from models import User
+from server.models import User
 
 from extensions import db, migrate, jwt, mail
 from config import Config
