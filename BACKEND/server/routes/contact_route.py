@@ -1,8 +1,8 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from extensions import db, mail
+from ..extensions import db, mail
 from flask_mail import Message
-from models import Contact, User
+from ..models import Contact, User
 import re
 
 contact_bp = Blueprint('contact', __name__)

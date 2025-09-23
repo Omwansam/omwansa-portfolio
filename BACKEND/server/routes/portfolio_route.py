@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify
-from extensions import db
-from models import User, Project, Skill, Experience, Education, Blog, Contact, ProjectStatus
+from ..extensions import db
+from ..models import User, Project, Skill, Experience, Education, Blog, Contact, ProjectStatus
 from sqlalchemy import func
 from datetime import datetime, timedelta
 

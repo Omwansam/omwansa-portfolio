@@ -1,8 +1,8 @@
 from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import jwt_required, get_jwt_identity, create_access_token, create_refresh_token
-from extensions import db
-from models import User, Image
+from ..extensions import db
+from ..models import User, Image
 import os
 import uuid
 from werkzeug.utils import secure_filename

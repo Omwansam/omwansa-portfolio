@@ -1,13 +1,13 @@
 from flask import Blueprint, request, jsonify, url_for, current_app
-from models import Image, User, Project, Blog
-from utils.images import (
+from ..models import Image, User, Project, Blog
+from ..utils.images import (
     save_portfolio_image, 
     delete_image_file, 
     allowed_file, 
     get_file_size, 
     get_mime_type
 )
-from extensions import db
+from ..extensions import db
 from flask_jwt_extended import jwt_required, get_jwt_identity
 import os
 

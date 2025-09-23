@@ -13,8 +13,8 @@ from datetime import date
 
 # Import modules directly since we're already in the server directory
 from app import app
-from extensions import db
-from models import Education
+from .extensions import db
+from .models import Education
 
 def clear_education_data():
     """Clear all existing education data"""

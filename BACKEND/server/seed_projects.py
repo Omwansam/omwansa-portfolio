@@ -9,8 +9,8 @@ import json
 from datetime import datetime
 
 from app import app
-from extensions import db
-from models import Project, ProjectStatus
+from .extensions import db
+from .models import Project, ProjectStatus
 
 
 def upsert_project(payload: dict) -> Project:

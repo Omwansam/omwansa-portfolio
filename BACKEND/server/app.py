@@ -1,21 +1,21 @@
 from flask import Flask, jsonify, send_from_directory
 import os
 from flask_cors import CORS
-from server.models import User
+from .models import User
 
-from server.extensions import db, migrate, jwt, mail
-from server.config import Config
+from .extensions import db, migrate, jwt, mail
+from .config import Config
 
 # Import route blueprints
-from routes.users_route import users_bp
-from routes.projects_route import projects_bp
-from routes.skills_route import skills_bp
-from routes.experience_route import experience_bp
-from routes.education_route import education_bp
-from routes.contact_route import contact_bp
-from routes.blog_route import blog_bp
-from routes.portfolio_route import portfolio_bp
-from routes.images_route import images_bp
+from .routes.users_route import users_bp
+from .routes.projects_route import projects_bp
+from .routes.skills_route import skills_bp
+from .routes.experience_route import experience_bp
+from .routes.education_route import education_bp
+from .routes.contact_route import contact_bp
+from .routes.blog_route import blog_bp
+from .routes.portfolio_route import portfolio_bp
+from .routes.images_route import images_bp
 
 # Configure Flask to serve React build (client/my-portfolio/dist)
 app = Flask(

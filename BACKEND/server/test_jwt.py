@@ -11,8 +11,8 @@ from datetime import datetime
 sys.path.append(os.path.dirname(__file__))
 
 from app import app
-from extensions import db
-from models import User
+from .extensions import db
+from .models import User
 from flask_jwt_extended import create_access_token, create_refresh_token
 
 def test_jwt():

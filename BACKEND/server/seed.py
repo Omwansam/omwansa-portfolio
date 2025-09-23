@@ -15,8 +15,8 @@ from werkzeug.security import generate_password_hash
 
 # Import modules directly since we're already in the server directory
 from app import app
-from extensions import db
-from models import User, Skill, Project, Experience, Education, Contact, Blog, Image, ProjectStatus, CategoryStatus
+from .extensions import db
+from .models import User, Skill, Project, Experience, Education, Contact, Blog, Image, ProjectStatus, CategoryStatus
 
 def clear_database():
     """Clear all data from the database"""
