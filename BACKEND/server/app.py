@@ -3,7 +3,6 @@ import os
 from flask_cors import CORS
 from .models import User
 from werkzeug.security import generate_password_hash
-import os as _env
 
 from .extensions import db, migrate, jwt, mail
 from .config import Config
@@ -52,35 +51,8 @@ def after_request(response):
     response.headers.add('Access-Control-Allow-Credentials', 'true')
     return response
 
-# Ensure database tables exist and seed a default admin if missing
-with app.app_context():
-    try:
-        db.create_all()
-        # Seed a minimal admin user for public profile if none exists
-        admin_exists = User.query.filter_by(is_admin=True).first()
-        if not admin_exists:
-            # Allow configuration via environment variables
-            _email = _env.getenv('ADMIN_EMAIL', 'omwansamarnold@gmail.com')
-            _username = _env.getenv('ADMIN_USERNAME', 'admin')
-            _password = _env.getenv('ADMIN_PASSWORD', 'admin123')
-            _first = _env.getenv('ADMIN_FIRST_NAME', 'Portfolio')
-            _last = _env.getenv('ADMIN_LAST_NAME', 'Owner')
-            _title = _env.getenv('ADMIN_TITLE', 'Software Developer')
-
-            seed_admin = User(
-                username=_username,
-                email=_email,
-                password_hash=generate_password_hash(_password),
-                is_admin=True,
-                first_name=_first,
-                last_name=_last,
-                title=_title
-            )
-            db.session.add(seed_admin)
-            db.session.commit()
-    except Exception:
-        # On platforms with read-only or start-up races, avoid crashing import
-        pass
+# IMPORTANT: We no longer auto-create or seed the database here.
+# The service uses the pre-seeded SQLite file configured in Config.SQLALCHEMY_DATABASE_URI.
 
 # Register blueprints
 app.register_blueprint(users_bp, url_prefix='/api/auth')
