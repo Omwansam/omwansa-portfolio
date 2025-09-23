@@ -17,6 +17,7 @@ from .routes.contact_route import contact_bp
 from .routes.blog_route import blog_bp
 from .routes.portfolio_route import portfolio_bp
 from .routes.images_route import images_bp
+from sqlalchemy import inspect
 
 # Configure Flask to serve React build (client/my-portfolio/dist)
 app = Flask(
@@ -110,6 +111,30 @@ def health_check():
         "status": "healthy",
         "timestamp": "2024-01-01T00:00:00Z"
     })
+
+# DB diagnostics endpoint (read-only)
+@app.route('/debug/db')
+def debug_db():
+    try:
+        uri = app.config.get('SQLALCHEMY_DATABASE_URI')
+        inspector = inspect(db.engine)
+        tables = inspector.get_table_names()
+        # For sqlite path extraction
+        sqlite_path = None
+        if uri and uri.startswith('sqlite:///'):
+            sqlite_path = uri.replace('sqlite:///', '').split('?', 1)[0]
+        exists = None
+        if sqlite_path:
+            exists = os.path.exists(sqlite_path)
+        return jsonify({
+            "database_uri": uri,
+            "sqlite_path": sqlite_path,
+            "sqlite_file_exists": exists,
+            "tables": tables,
+            "has_education_table": 'education' in tables,
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000, host='0.0.0.0')
