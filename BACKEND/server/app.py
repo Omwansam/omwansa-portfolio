@@ -1,4 +1,5 @@
 from flask import Flask, jsonify, send_from_directory
+import os
 from flask_cors import CORS
 from models import User
 
@@ -16,7 +17,12 @@ from routes.blog_route import blog_bp
 from routes.portfolio_route import portfolio_bp
 from routes.images_route import images_bp
 
-app = Flask(__name__)
+# Configure Flask to serve React build (client/my-portfolio/dist)
+app = Flask(
+    __name__,
+    static_folder='../../client/my-portfolio/dist',
+    static_url_path='/'
+)
 
 # Load configuration
 app.config.from_object(Config)
@@ -62,23 +68,18 @@ def unauthorized(error):
 def forbidden(error):
     return jsonify({"error": "Forbidden"}), 403
 
-@app.route('/')
-def home():
-    return jsonify({
-        "message": "Personal Portfolio API - Omwansa Arnold",
-        "version": "1.0.0",
-        "endpoints": {
-            "auth": "/api/auth/*",
-            "projects": "/api/projects/*",
-            "skills": "/api/skills/*",
-            "experience": "/api/experience/*",
-            "education": "/api/education/*",
-            "contact": "/api/contact/*",
-            "blog": "/api/blog/*",
-            "portfolio": "/api/portfolio/*",
-            "images": "/api/images/*"
-        }
-    })
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve_react(path):
+    # Serve static assets from React build if they exist
+    build_path = app.static_folder
+    requested_path = os.path.join(build_path, path)
+
+    if path != '' and os.path.exists(requested_path):
+        return send_from_directory(build_path, path)
+
+    # Fallback to index.html for React Router routes
+    return send_from_directory(build_path, 'index.html')
 
 # Serve static files (uploads)
 @app.route('/static/uploads/<path:filename>')
