@@ -2,6 +2,7 @@ from flask import Flask, jsonify, send_from_directory
 import os
 from flask_cors import CORS
 from .models import User
+from werkzeug.security import generate_password_hash
 
 from .extensions import db, migrate, jwt, mail
 from .config import Config
@@ -49,6 +50,28 @@ def after_request(response):
     response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH')
     response.headers.add('Access-Control-Allow-Credentials', 'true')
     return response
+
+# Ensure database tables exist and seed a default admin if missing
+with app.app_context():
+    try:
+        db.create_all()
+        # Seed a minimal admin user for public profile if none exists
+        admin_exists = User.query.filter_by(is_admin=True).first()
+        if not admin_exists:
+            seed_admin = User(
+                username='admin',
+                email='admin@example.com',
+                password_hash=generate_password_hash('admin123'),
+                is_admin=True,
+                first_name='Portfolio',
+                last_name='Owner',
+                title='Software Developer'
+            )
+            db.session.add(seed_admin)
+            db.session.commit()
+    except Exception:
+        # On platforms with read-only or start-up races, avoid crashing import
+        pass
 
 # Register blueprints
 app.register_blueprint(users_bp, url_prefix='/api/auth')
