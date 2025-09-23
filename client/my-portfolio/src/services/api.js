@@ -8,12 +8,15 @@ class ApiService {
     this.staticBaseURL = this.baseURL.replace('/api', '');
   }
 
-  // Generic request method
-  async request(endpoint, options = {}) {
+  // Generic request method with retry logic
+  async request(endpoint, options = {}, retryCount = 0) {
     const url = `${this.baseURL}${endpoint}`;
+    const maxRetries = 2;
+    
     const config = {
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
         ...options.headers,
       },
       ...options,
@@ -29,6 +32,7 @@ class ApiService {
     }
 
     try {
+      console.log(`📡 Making request to: ${url}`);
       const response = await fetch(url, config);
       console.log(`📡 Response status: ${response.status} for ${endpoint}`);
       
@@ -57,6 +61,13 @@ class ApiService {
         }
       }
 
+      // Handle network errors and retry
+      if (!response.ok && response.status >= 500 && retryCount < maxRetries) {
+        console.log(`🔄 Server error ${response.status}, retrying... (${retryCount + 1}/${maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1))); // Exponential backoff
+        return this.request(endpoint, options, retryCount + 1);
+      }
+
       const data = await response.json();
 
       if (!response.ok) {
@@ -66,6 +77,13 @@ class ApiService {
 
       return data;
     } catch (error) {
+      // Handle network errors and retry
+      if (error.name === 'TypeError' && error.message.includes('Failed to fetch') && retryCount < maxRetries) {
+        console.log(`🔄 Network error, retrying... (${retryCount + 1}/${maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1))); // Exponential backoff
+        return this.request(endpoint, options, retryCount + 1);
+      }
+      
       console.error('❌ API request failed:', error);
       throw error;
     }
@@ -383,6 +401,22 @@ class ApiService {
   // Portfolio/Stats API
   async getPortfolioStats() {
     return this.request('/portfolio/stats');
+  }
+
+  // Health check method
+  async healthCheck() {
+    try {
+      const response = await fetch(`${this.baseURL.replace('/api', '')}/health`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      return response.ok;
+    } catch (error) {
+      console.error('Health check failed:', error);
+      return false;
+    }
   }
 
   // Token management
