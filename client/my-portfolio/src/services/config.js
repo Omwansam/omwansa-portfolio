@@ -2,7 +2,7 @@
 export const API_CONFIG = {
   // Backend API base URL
   BASE_URL: import.meta.env.MODE === 'production' 
-    ? 'https://your-production-api.com/api' 
+    ? 'https://portfolio1-backend-8o63.onrender.com/api' 
     : 'http://localhost:5000/api',
   
   // Request timeout in milliseconds
