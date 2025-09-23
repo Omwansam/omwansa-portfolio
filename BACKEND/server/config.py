@@ -11,11 +11,17 @@ os.makedirs(INSTANCE_DIR, exist_ok=True)
 class Config:
     SECRET_KEY = os.getenv('SECRET_KEY')
     # If DATABASE_URL is not provided, default to the seeded SQLite file in instance dir
-    SQLALCHEMY_DATABASE_URI = os.getenv(
-        'DATABASE_URL',
-        f"sqlite:///{os.path.join(INSTANCE_DIR, 'portfolio.db')}"
-    )
+    _default_sqlite_path = os.path.join(INSTANCE_DIR, 'portfolio.db')
+    _default_sqlite_uri = f"sqlite:///{_default_sqlite_path}"
+    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', _default_sqlite_uri)
+
+    # For SQLite under Gunicorn, ensure thread safety and connectivity
+    if SQLALCHEMY_DATABASE_URI.startswith('sqlite:///') and 'check_same_thread' not in SQLALCHEMY_DATABASE_URI:
+        SQLALCHEMY_DATABASE_URI += '?check_same_thread=false'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        "pool_pre_ping": True
+    }
 
     JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY')
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)

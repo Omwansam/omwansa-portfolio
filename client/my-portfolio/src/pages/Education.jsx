@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import apiService from '../services/api';
-import ApiDebugger from '../components/ApiDebugger';
 
 const Education = () => {
   const [activeTab, setActiveTab] = useState('formal');
@@ -14,27 +13,11 @@ const Education = () => {
       try {
         setLoading(true);
         setError(null);
-        
-        // First, check if backend is healthy
-        const isHealthy = await apiService.healthCheck();
-        if (!isHealthy) {
-          console.warn('Backend health check failed, using fallback data');
-          setEducationData(getFallbackEducationData());
-          return;
-        }
-        
         const data = await apiService.getEducations();
-        if (data && Array.isArray(data) && data.length > 0) {
-          setEducationData(data);
-        } else {
-          console.warn('No education data received, using fallback data');
-          setEducationData(getFallbackEducationData());
-        }
+        setEducationData(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error('Error fetching education data:', err);
-        console.warn('Using fallback education data due to API error');
-        setEducationData(getFallbackEducationData());
-        setError('Using cached data - API temporarily unavailable');
+        setError('Failed to load education data');
       } finally {
         setLoading(false);
       }
@@ -42,48 +25,6 @@ const Education = () => {
 
     fetchEducationData();
   }, []);
-
-  // Fallback education data
-  const getFallbackEducationData = () => {
-    return [
-      {
-        id: 1,
-        institution: "University of Nairobi",
-        degree: "Bachelor of Science in Computer Science",
-        field_of_study: "Computer Science",
-        description: "Comprehensive study of computer science fundamentals including algorithms, data structures, software engineering, and database systems. Key coursework: Data Structures, Algorithms, Software Engineering, Database Systems, Computer Networks, Operating Systems. Technologies: Java, Python, C++, SQL, HTML/CSS, JavaScript.",
-        start_date: "2018-09-01",
-        end_date: "2022-06-30",
-        current: false,
-        gpa: "3.8",
-        location: "Nairobi, Kenya"
-      },
-      {
-        id: 2,
-        institution: "Coursera",
-        degree: "Google Data Analytics Professional Certificate",
-        field_of_study: "Data Analytics",
-        description: "Comprehensive data analytics program covering data collection, processing, analysis, and visualization. Skills: SQL, R, Tableau, Google Analytics, Data Visualization, Statistical Analysis.",
-        start_date: "2023-01-15",
-        end_date: "2023-06-15",
-        current: false,
-        gpa: null,
-        location: "Online"
-      },
-      {
-        id: 3,
-        institution: "AWS Training",
-        degree: "AWS Certified Solutions Architect",
-        field_of_study: "Cloud Computing",
-        description: "Professional certification in AWS cloud architecture and services. Technologies: EC2, S3, RDS, Lambda, CloudFormation, VPC, IAM, CloudWatch.",
-        start_date: "2023-03-01",
-        end_date: "2023-05-30",
-        current: false,
-        gpa: null,
-        location: "Online"
-      }
-    ];
-  };
 
   // Helper function to categorize education data
   const categorizeEducation = (data) => {
@@ -276,8 +217,8 @@ const Education = () => {
     );
   }
 
-  // Error state - only show full error if no fallback data is available
-  if (error && educationData.length === 0) {
+  // Error state
+  if (error) {
     return (
       <div className="min-h-screen pt-16 w-full flex items-center justify-center">
         <div className="text-center">
@@ -297,22 +238,6 @@ const Education = () => {
 
   return (
     <div className="min-h-screen pt-16 w-full">
-      {/* API Status Notification */}
-      {error && educationData.length > 0 && (
-        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mx-4 mt-4 rounded">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <span className="text-yellow-400">⚠️</span>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-yellow-700">
-                {error}. Data may not be up to date.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-      
       {/* Hero Section */}
       <section className="relative w-full bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-600 text-white py-20">
         <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
