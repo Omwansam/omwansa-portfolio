@@ -1,163 +1,240 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import apiService from '../services/api';
 
 const Education = () => {
   const [activeTab, setActiveTab] = useState('formal');
+  const [educationData, setEducationData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const formalEducation = [
-    {
-      id: 1,
-      degree: 'Bachelor of Science in Computer Science',
-      institution: 'University of Nairobi',
-      location: 'Nairobi, Kenya',
-      period: '2015 - 2019',
-      grade: 'First Class Honours',
-      description: 'Comprehensive study of computer science fundamentals including algorithms, data structures, software engineering, and system design.',
-      achievements: [
-        'Graduated with First Class Honours (GPA: 3.8/4.0)',
-        'Dean\'s List for 6 consecutive semesters',
-        'President of Computer Science Society',
-        'Led team to win National Programming Competition',
-        'Published research paper on Machine Learning algorithms'
-      ],
-      relevantCourses: [
-        'Data Structures & Algorithms',
-        'Software Engineering',
-        'Database Systems',
-        'Computer Networks',
-        'Operating Systems',
-        'Machine Learning',
-        'Web Development',
-        'Mobile Application Development'
-      ],
-      logo: '🎓'
-    },
-    {
-      id: 2,
-      degree: 'Kenya Certificate of Secondary Education (KCSE)',
-      institution: 'Alliance High School',
-      location: 'Kikuyu, Kenya',
-      period: '2011 - 2014',
-      grade: 'A- (78 points)',
-      description: 'Strong foundation in mathematics, physics, and computer studies that paved the way for my technical career.',
-      achievements: [
-        'Scored A- in Mathematics and Physics',
-        'Computer Studies Club President',
-        'Participated in National Science Congress',
-        'Volunteered in community tech literacy programs'
-      ],
-      relevantCourses: [
-        'Mathematics',
-        'Physics',
-        'Chemistry',
-        'Computer Studies',
-        'English',
-        'Kiswahili'
-      ],
-      logo: '📚'
-    }
-  ];
+  // Fetch education data from backend
+  useEffect(() => {
+    const fetchEducationData = async () => {
+      try {
+        setLoading(true);
+        const data = await apiService.getEducations();
+        setEducationData(data);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching education data:', err);
+        setError('Failed to load education data');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const certifications = [
-    {
-      id: 1,
-      title: 'AWS Certified Solutions Architect',
-      issuer: 'Amazon Web Services',
-      date: '2023',
-      credentialId: 'AWS-CSA-2023-001',
-      description: 'Comprehensive certification covering AWS cloud architecture, security, and best practices.',
-      skills: ['Cloud Architecture', 'AWS Services', 'Security', 'Cost Optimization'],
-      logo: '☁️'
-    },
-    {
-      id: 2,
-      title: 'Google Cloud Professional Developer',
-      issuer: 'Google Cloud',
-      date: '2023',
-      credentialId: 'GCP-PD-2023-002',
-      description: 'Advanced certification in Google Cloud Platform development and deployment.',
-      skills: ['GCP Services', 'Cloud Development', 'DevOps', 'Microservices'],
-      logo: '🌐'
-    },
-    {
-      id: 3,
-      title: 'React Developer Certification',
-      issuer: 'Meta (Facebook)',
-      date: '2022',
-      credentialId: 'REACT-META-2022-003',
-      description: 'Professional certification in React development and modern JavaScript practices.',
-      skills: ['React', 'JavaScript ES6+', 'Hooks', 'State Management'],
-      logo: '⚛️'
-    },
-    {
-      id: 4,
-      title: 'Node.js Application Developer',
-      issuer: 'OpenJS Foundation',
-      date: '2022',
-      credentialId: 'NODE-OPENJS-2022-004',
-      description: 'Certification in server-side JavaScript development with Node.js.',
-      skills: ['Node.js', 'Express.js', 'API Development', 'Async Programming'],
-      logo: '🟢'
-    },
-    {
-      id: 5,
-      title: 'Agile Project Management',
-      issuer: 'Scrum Alliance',
-      date: '2021',
-      credentialId: 'CSM-SCRUM-2021-005',
-      description: 'Certified Scrum Master with expertise in agile methodologies.',
-      skills: ['Scrum', 'Agile', 'Project Management', 'Team Leadership'],
-      logo: '🏃‍♂️'
-    },
-    {
-      id: 6,
-      title: 'UI/UX Design Fundamentals',
-      issuer: 'Google UX Design',
-      date: '2021',
-      credentialId: 'UX-GOOGLE-2021-006',
-      description: 'Comprehensive course in user experience and interface design principles.',
-      skills: ['User Research', 'Wireframing', 'Prototyping', 'Design Systems'],
-      logo: '🎨'
-    }
-  ];
+    fetchEducationData();
+  }, []);
 
-  const onlineCourses = [
-    {
-      id: 1,
-      title: 'Full-Stack Web Development',
-      platform: 'freeCodeCamp',
-      duration: '300 hours',
-      date: '2020',
-      description: 'Comprehensive full-stack development course covering frontend and backend technologies.',
-      technologies: ['HTML', 'CSS', 'JavaScript', 'React', 'Node.js', 'MongoDB']
-    },
-    {
-      id: 2,
-      title: 'Machine Learning Specialization',
-      platform: 'Coursera (Stanford)',
-      duration: '120 hours',
-      date: '2020',
-      description: 'Advanced machine learning course by Andrew Ng covering algorithms and applications.',
-      technologies: ['Python', 'TensorFlow', 'Scikit-learn', 'Pandas', 'NumPy']
-    },
-    {
-      id: 3,
-      title: 'Docker and Kubernetes',
-      platform: 'Udemy',
-      duration: '40 hours',
-      date: '2021',
-      description: 'Containerization and orchestration technologies for modern application deployment.',
-      technologies: ['Docker', 'Kubernetes', 'CI/CD', 'DevOps']
-    },
-    {
-      id: 4,
-      title: 'Advanced React Patterns',
-      platform: 'Frontend Masters',
-      duration: '25 hours',
-      date: '2022',
-      description: 'Deep dive into advanced React patterns and performance optimization techniques.',
-      technologies: ['React', 'Hooks', 'Context API', 'Performance Optimization']
+  // Helper function to categorize education data
+  const categorizeEducation = (data) => {
+    const formal = [];
+    const certifications = [];
+    const courses = [];
+
+    data.forEach(edu => {
+      const institution = edu.institution.toLowerCase();
+      const degree = edu.degree.toLowerCase();
+      
+      // Categorize based on institution and degree type
+      if (institution.includes('university') || institution.includes('college') || 
+          degree.includes('bachelor') || degree.includes('master') || degree.includes('diploma')) {
+        formal.push(transformToFormalEducation(edu));
+      } else if (institution.includes('cisco') || institution.includes('microsoft') || 
+                 institution.includes('aws') || institution.includes('google') ||
+                 degree.includes('certified') || degree.includes('certification')) {
+        certifications.push(transformToCertification(edu));
+      } else {
+        courses.push(transformToOnlineCourse(edu));
+      }
+    });
+
+    return { formal, certifications, courses };
+  };
+
+  // Transform backend data to formal education format
+  const transformToFormalEducation = (edu) => {
+    const startYear = edu.start_date ? new Date(edu.start_date).getFullYear() : '';
+    const endYear = edu.end_date ? new Date(edu.end_date).getFullYear() : (edu.current ? 'Present' : '');
+    const period = `${startYear} - ${endYear}`;
+    
+    // Extract achievements and courses from description
+    const description = edu.description || '';
+    const achievements = extractAchievements(description);
+    const relevantCourses = extractCourses(description);
+    
+    return {
+      id: edu.id,
+      degree: edu.degree,
+      institution: edu.institution,
+      location: edu.location || '',
+      period: period,
+      grade: edu.gpa ? `GPA: ${edu.gpa}` : 'Completed',
+      description: description.split('Key coursework:')[0] || description.split('Technologies:')[0] || description.split('Skills:')[0] || description,
+      achievements: achievements,
+      relevantCourses: relevantCourses,
+      logo: getEducationLogo(edu.institution)
+    };
+  };
+
+  // Transform backend data to certification format
+  const transformToCertification = (edu) => {
+    const endYear = edu.end_date ? new Date(edu.end_date).getFullYear() : '';
+    
+    return {
+      id: edu.id,
+      title: edu.degree,
+      issuer: edu.institution,
+      date: endYear.toString(),
+      credentialId: `CERT-${edu.id}`,
+      description: edu.description || '',
+      skills: extractSkills(edu.description || ''),
+      logo: getCertificationLogo(edu.institution)
+    };
+  };
+
+  // Transform backend data to online course format
+  const transformToOnlineCourse = (edu) => {
+    const endYear = edu.end_date ? new Date(edu.end_date).getFullYear() : '';
+    const startYear = edu.start_date ? new Date(edu.start_date).getFullYear() : '';
+    const duration = startYear && endYear ? `${Math.abs(endYear - startYear) * 12} months` : 'Self-paced';
+    
+    return {
+      id: edu.id,
+      title: edu.degree,
+      platform: edu.institution,
+      duration: duration,
+      date: endYear.toString(),
+      description: edu.description || '',
+      technologies: extractTechnologies(edu.description || '')
+    };
+  };
+
+  // Helper functions to extract data from descriptions
+  const extractAchievements = (description) => {
+    const achievements = [];
+    if (description.includes('GPA')) {
+      const gpaMatch = description.match(/GPA[:\s]*([0-9.]+)/i);
+      if (gpaMatch) {
+        achievements.push(`Graduated with GPA: ${gpaMatch[1]}`);
+      }
     }
-  ];
+    if (description.includes('Dean\'s List')) {
+      achievements.push('Dean\'s List recipient');
+    }
+    if (description.includes('President') || description.includes('Leader')) {
+      achievements.push('Leadership role in student organizations');
+    }
+    if (description.includes('Published') || description.includes('research')) {
+      achievements.push('Published research work');
+    }
+    if (achievements.length === 0) {
+      achievements.push('Successfully completed program');
+    }
+    return achievements;
+  };
+
+  const extractCourses = (description) => {
+    const courses = [];
+    if (description.includes('Key coursework:')) {
+      const courseworkMatch = description.match(/Key coursework:\s*([^.]+)/i);
+      if (courseworkMatch) {
+        const courseList = courseworkMatch[1].split(',').map(c => c.trim());
+        courses.push(...courseList.slice(0, 8)); // Limit to 8 courses
+      }
+    }
+    if (courses.length === 0) {
+      courses.push('Core curriculum completed', 'Specialized coursework', 'Practical projects');
+    }
+    return courses;
+  };
+
+  const extractSkills = (description) => {
+    const skills = [];
+    if (description.includes('Skills:')) {
+      const skillsMatch = description.match(/Skills:\s*([^.]+)/i);
+      if (skillsMatch) {
+        const skillList = skillsMatch[1].split(',').map(s => s.trim());
+        skills.push(...skillList.slice(0, 6)); // Limit to 6 skills
+      }
+    }
+    if (skills.length === 0) {
+      skills.push('Professional certification', 'Industry knowledge', 'Best practices');
+    }
+    return skills;
+  };
+
+  const extractTechnologies = (description) => {
+    const technologies = [];
+    if (description.includes('Technologies:')) {
+      const techMatch = description.match(/Technologies:\s*([^.]+)/i);
+      if (techMatch) {
+        const techList = techMatch[1].split(',').map(t => t.trim());
+        technologies.push(...techList.slice(0, 6)); // Limit to 6 technologies
+      }
+    }
+    if (technologies.length === 0) {
+      technologies.push('Modern technologies', 'Industry tools', 'Best practices');
+    }
+    return technologies;
+  };
+
+  // Helper functions for logos
+  const getEducationLogo = (institution) => {
+    const inst = institution.toLowerCase();
+    if (inst.includes('university')) return '🎓';
+    if (inst.includes('college')) return '🏫';
+    if (inst.includes('school')) return '📚';
+    return '🎓';
+  };
+
+  const getCertificationLogo = (institution) => {
+    const inst = institution.toLowerCase();
+    if (inst.includes('cisco')) return '🌐';
+    if (inst.includes('microsoft')) return '🪟';
+    if (inst.includes('aws')) return '☁️';
+    if (inst.includes('google')) return '🔍';
+    return '🏆';
+  };
+
+  // Get categorized data
+  const { formal, certifications, courses } = categorizeEducation(educationData);
+
+  // Use dynamic data from backend
+  const formalEducation = formal;
+  const certificationsData = certifications;
+  const onlineCourses = courses;
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen pt-16 w-full flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-emerald-600 mx-auto mb-4"></div>
+          <p className="text-xl text-gray-600">Loading education data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen pt-16 w-full flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-6xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Error Loading Education Data</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="bg-emerald-600 text-white px-6 py-2 rounded-lg hover:bg-emerald-700 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pt-16 w-full">
@@ -170,9 +247,15 @@ const Education = () => {
               My academic journey and continuous learning in technology
             </p>
             <div className="flex flex-wrap justify-center gap-4 text-sm">
-              <span className="bg-white/20 px-4 py-2 rounded-full">BSc Computer Science</span>
-              <span className="bg-white/20 px-4 py-2 rounded-full">6 Certifications</span>
-              <span className="bg-white/20 px-4 py-2 rounded-full">Continuous Learning</span>
+              <span className="bg-white/20 px-4 py-2 rounded-full">
+                {formal.length} Formal Education
+              </span>
+              <span className="bg-white/20 px-4 py-2 rounded-full">
+                {certifications.length} Certifications
+              </span>
+              <span className="bg-white/20 px-4 py-2 rounded-full">
+                {courses.length} Online Courses
+              </span>
             </div>
           </div>
         </div>
@@ -287,7 +370,7 @@ const Education = () => {
           {/* Certifications */}
           {activeTab === 'certifications' && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {certifications.map((cert) => (
+              {certificationsData.map((cert) => (
                 <div key={cert.id} className="bg-white rounded-2xl shadow-lg p-8 hover:shadow-xl transition-shadow">
                   <div className="text-4xl mb-4">{cert.logo}</div>
                   <h3 className="text-xl font-bold text-gray-900 mb-2">{cert.title}</h3>
