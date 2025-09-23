@@ -3,8 +3,8 @@ import os
 from flask_cors import CORS
 from server.models import User
 
-from extensions import db, migrate, jwt, mail
-from config import Config
+from server.extensions import db, migrate, jwt, mail
+from server.config import Config
 
 # Import route blueprints
 from routes.users_route import users_bp
