@@ -3,6 +3,7 @@ import os
 from flask_cors import CORS
 from .models import User
 from werkzeug.security import generate_password_hash
+import os as _env
 
 from .extensions import db, migrate, jwt, mail
 from .config import Config
@@ -58,14 +59,22 @@ with app.app_context():
         # Seed a minimal admin user for public profile if none exists
         admin_exists = User.query.filter_by(is_admin=True).first()
         if not admin_exists:
+            # Allow configuration via environment variables
+            _email = _env.getenv('ADMIN_EMAIL', 'omwansamarnold@gmail.com')
+            _username = _env.getenv('ADMIN_USERNAME', 'admin')
+            _password = _env.getenv('ADMIN_PASSWORD', 'admin123')
+            _first = _env.getenv('ADMIN_FIRST_NAME', 'Portfolio')
+            _last = _env.getenv('ADMIN_LAST_NAME', 'Owner')
+            _title = _env.getenv('ADMIN_TITLE', 'Software Developer')
+
             seed_admin = User(
-                username='admin',
-                email='admin@example.com',
-                password_hash=generate_password_hash('admin123'),
+                username=_username,
+                email=_email,
+                password_hash=generate_password_hash(_password),
                 is_admin=True,
-                first_name='Portfolio',
-                last_name='Owner',
-                title='Software Developer'
+                first_name=_first,
+                last_name=_last,
+                title=_title
             )
             db.session.add(seed_admin)
             db.session.commit()

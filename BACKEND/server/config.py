@@ -5,10 +5,16 @@ import os
 load_dotenv()
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+INSTANCE_DIR = os.path.join(BASE_DIR, 'instance')
+os.makedirs(INSTANCE_DIR, exist_ok=True)
 
 class Config:
     SECRET_KEY = os.getenv('SECRET_KEY')
-    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', 'sqlite:///portfolio.db')
+    # If DATABASE_URL is not provided, default to the seeded SQLite file in instance dir
+    SQLALCHEMY_DATABASE_URI = os.getenv(
+        'DATABASE_URL',
+        f"sqlite:///{os.path.join(INSTANCE_DIR, 'portfolio.db')}"
+    )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY')
