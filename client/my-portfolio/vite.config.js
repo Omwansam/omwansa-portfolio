@@ -11,7 +11,7 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
-    allowedHosts: ['omwansa-portfolio-4.onrender.com'],
+    allowedHosts: ['omwansa-portfolio-2.onrender.com'],
     hmr: {
       overlay: true,
     },
