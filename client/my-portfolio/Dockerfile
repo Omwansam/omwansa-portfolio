@@ -3,6 +3,9 @@
 
 # 1) Build stage
 FROM node:20-bullseye AS build
+ARG VITE_API_BASE_URL
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+ENV NODE_ENV=production
 WORKDIR /app
 
 # Install deps (better cache)
@@ -11,6 +14,8 @@ RUN npm ci --no-audit --no-fund
 
 # Copy source and build
 COPY client/my-portfolio .
+# Print the API base to help debugging build-time injection (optional)
+RUN echo "Building with VITE_API_BASE_URL=${VITE_API_BASE_URL}"
 RUN npm run build
 
 # 2) Run stage - use an ultra-small web server (nginx-alpine)
