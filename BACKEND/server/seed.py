@@ -13,10 +13,28 @@ import json
 from datetime import datetime, date
 from werkzeug.security import generate_password_hash
 
-# Import modules directly since we're already in the server directory
-from app import app
-from .extensions import db
-from .models import User, Skill, Project, Experience, Education, Contact, Blog, Image, ProjectStatus, CategoryStatus
+# Make imports robust whether run as a module or a script
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+PARENT_DIR = os.path.dirname(CURRENT_DIR)
+if PARENT_DIR not in sys.path:
+    sys.path.insert(0, PARENT_DIR)
+
+try:
+    # When executed as a script (python server/seed.py)
+    from server.app import app
+    from server.extensions import db
+    from server.models import (
+        User, Skill, Project, Experience, Education, Contact, Blog, Image,
+        ProjectStatus, CategoryStatus
+    )
+except ImportError:
+    # When executed as a module (python -m server.seed)
+    from .app import app
+    from .extensions import db
+    from .models import (
+        User, Skill, Project, Experience, Education, Contact, Blog, Image,
+        ProjectStatus, CategoryStatus
+    )
 
 def clear_database():
     """Clear all data from the database"""
@@ -37,7 +55,7 @@ def create_users():
     # Admin user
     admin_user = User(
         username='admin',
-        email='omwansamarnold@gmail.com',
+        email='admin@example.com',
         password_hash=generate_password_hash('admin123'),
         is_admin=True,
         first_name='Omwansa',

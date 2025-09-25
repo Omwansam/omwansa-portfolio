@@ -2,7 +2,9 @@ from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import jwt_required, get_jwt_identity, create_access_token, create_refresh_token
 from ..extensions import db
+from sqlalchemy import func
 from ..models import User, Image
+from werkzeug.security import generate_password_hash
 import os
 import uuid
 from werkzeug.utils import secure_filename
@@ -53,11 +55,11 @@ def login():
     if not data.get('email') or not data.get('password'):
         return jsonify({"message": "Email and password are required"}), 400
 
-    email = data['email']
+    email = data['email'].strip().lower()
     password = data['password']
 
-    # Fetch the user from the database
-    user = User.query.filter_by(email=email).first()
+    # Fetch the user from the database (case-insensitive email match)
+    user = User.query.filter(func.lower(User.email) == email).first()
     if not user or not check_password_hash(user.password_hash, password):
         return jsonify({"message": "Invalid email or password"}), 401
 
@@ -148,6 +150,10 @@ def get_public_profile():
     """Public endpoint to get portfolio owner's profile data without authentication"""
     # Get the first admin user (portfolio owner)
     user = User.query.filter_by(is_admin=True).first()
+    # Fallback: if no admin user exists yet, return the first available user
+    if not user:
+        user = User.query.first()
+    # If absolutely no users exist, return 404. Only data from the database is used.
     if not user:
         return jsonify({"message": "Portfolio owner not found"}), 404
     

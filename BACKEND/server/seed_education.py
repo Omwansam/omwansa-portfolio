@@ -11,10 +11,22 @@ import os
 import sys
 from datetime import date
 
-# Import modules directly since we're already in the server directory
-from app import app
-from .extensions import db
-from .models import Education
+# Make imports robust whether run as a module or a script
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+PARENT_DIR = os.path.dirname(CURRENT_DIR)
+if PARENT_DIR not in sys.path:
+    sys.path.insert(0, PARENT_DIR)
+
+try:
+    # When executed as a script (python server/seed_education.py)
+    from server.app import app
+    from server.extensions import db
+    from server.models import Education
+except ImportError:
+    # When executed as a module (python -m server.seed_education)
+    from .app import app
+    from .extensions import db
+    from .models import Education
 
 def clear_education_data():
     """Clear all existing education data"""

@@ -52,8 +52,13 @@ def after_request(response):
     response.headers.add('Access-Control-Allow-Credentials', 'true')
     return response
 
-# IMPORTANT: We no longer auto-create or seed the database here.
-# The service uses the pre-seeded SQLite file configured in Config.SQLALCHEMY_DATABASE_URI.
+# Ensure database tables exist on startup
+with app.app_context():
+    try:
+        db.create_all()
+        print("✅ Database tables verified/created")
+    except Exception as e:
+        print(f"⚠️ Database initialization warning: {e}")
 
 # Register blueprints
 app.register_blueprint(users_bp, url_prefix='/api/auth')

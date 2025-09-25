@@ -5,12 +5,27 @@ Adds 10 additional projects to the database without clearing other data.
 Skips duplicates based on exact project title match.
 """
 
+import os
+import sys
 import json
 from datetime import datetime
 
-from app import app
-from .extensions import db
-from .models import Project, ProjectStatus
+# Make imports robust whether run as a module or a script
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+PARENT_DIR = os.path.dirname(CURRENT_DIR)
+if PARENT_DIR not in sys.path:
+    sys.path.insert(0, PARENT_DIR)
+
+try:
+    # When executed as a script (python server/seed_projects.py)
+    from server.app import app
+    from server.extensions import db
+    from server.models import Project, ProjectStatus
+except ImportError:
+    # When executed as a module (python -m server.seed_projects)
+    from .app import app
+    from .extensions import db
+    from .models import Project, ProjectStatus
 
 
 def upsert_project(payload: dict) -> Project:
