@@ -1,17 +1,11 @@
 // API Configuration
 export const API_CONFIG = {
-  // Backend API base URL - more robust environment detection
+  // Backend API base URL - use env override or default to local backend
   BASE_URL: (() => {
-    // Check if we're in production build or deployed environment
-    const isProduction = import.meta.env.PROD || 
-                        window.location.hostname !== 'localhost' ||
-                        window.location.hostname.includes('onrender.com') ||
-                        window.location.hostname.includes('vercel.app') ||
-                        window.location.hostname.includes('netlify.app');
-    
-    return isProduction 
-      ? 'https://portfolio1-backend-8o63.onrender.com/api' 
-      : 'http://localhost:5000/api';
+    const envUrl = import.meta.env?.VITE_API_BASE_URL;
+    const base = (envUrl && envUrl.trim().length > 0) ? envUrl : 'http://localhost:5000/api';
+    // Normalize by removing any trailing slashes
+    return base.replace(/\/+$/, '');
   })(),
   
   // Request timeout in milliseconds

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import apiService from '../services/api';
+import ApiDebugger from '../components/ApiDebugger';
 
 const Education = () => {
   const [activeTab, setActiveTab] = useState('formal');
