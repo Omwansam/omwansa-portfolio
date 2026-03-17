@@ -52,13 +52,9 @@ def after_request(response):
     response.headers.add('Access-Control-Allow-Credentials', 'true')
     return response
 
-# Ensure database tables exist on startup
-with app.app_context():
-    try:
-        db.create_all()
-        print("✅ Database tables verified/created")
-    except Exception as e:
-        print(f"⚠️ Database initialization warning: {e}")
+# NOTE: Avoid db.create_all() on import/startup.
+# Flask-Migrate/Alembic should own schema creation via migrations; calling create_all
+# causes "DuplicateTable" errors when migrations run against a fresh database.
 
 # Register blueprints
 app.register_blueprint(users_bp, url_prefix='/api/auth')

@@ -1,20 +1,46 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { apiService } from '../services';
+import FullPageLoader from '../components/FullPageLoader';
+import FullPageError from '../components/FullPageError';
 
 const About = () => {
   const [activeTab, setActiveTab] = useState('story');
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const personalInfo = {
-    name: 'Omwansa Arnold',
-    title: 'Full-Stack Developer & Digital Solutions Architect',
-    location: 'Nairobi, Kenya',
-    email: 'arnold@example.com',
-    phone: '+254 700 000 000',
+    name: profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Omwansa Arnold' : 'Omwansa Arnold',
+    title: profile?.title || 'Full-Stack Developer & Digital Solutions Architect',
+    location: profile?.location || 'Nairobi, Kenya',
+    email: profile?.email || 'arnold@example.com',
+    phone: profile?.phone || '+254 700 000 000',
     age: '28',
     experience: '5+ Years',
     availability: 'Available for Projects',
     languages: ['English', 'Kiswahili', 'French']
   };
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const p = await apiService.getPublicProfile();
+        setProfile(p);
+      } catch (e) {
+        console.error('Error fetching public profile:', e);
+        setError('Failed to load about page data');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProfile();
+  }, []);
+
+  if (loading) return <FullPageLoader message="Loading about data..." />;
+  if (error) return <FullPageError title="Error Loading About Data" message={error} onRetry={() => window.location.reload()} />;
 
   const achievements = [
     {

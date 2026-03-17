@@ -1,66 +1,86 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { apiService } from '../services';
+import FullPageLoader from '../components/FullPageLoader';
+import FullPageError from '../components/FullPageError';
 
 const Skills = () => {
-  const [activeCategory, setActiveCategory] = useState('frontend');
+  const [activeCategory, setActiveCategory] = useState('framework');
+  const [skills, setSkills] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const skillCategories = {
-    frontend: {
-      title: 'Frontend Development',
-      icon: '💻',
-      skills: [
-        { name: 'React', level: 95, color: 'bg-blue-500' },
-        { name: 'JavaScript', level: 90, color: 'bg-yellow-500' },
-        { name: 'TypeScript', level: 85, color: 'bg-blue-600' },
-        { name: 'HTML/CSS', level: 95, color: 'bg-orange-500' },
-        { name: 'Tailwind CSS', level: 90, color: 'bg-cyan-500' },
-        { name: 'Vue.js', level: 75, color: 'bg-green-500' },
-        { name: 'Next.js', level: 80, color: 'bg-gray-800' },
-        { name: 'SASS/SCSS', level: 85, color: 'bg-pink-500' }
-      ]
-    },
-    backend: {
-      title: 'Backend Development',
-      icon: '⚙️',
-      skills: [
-        { name: 'Node.js', level: 90, color: 'bg-green-600' },
-        { name: 'Python', level: 85, color: 'bg-yellow-600' },
-        { name: 'Express.js', level: 90, color: 'bg-gray-700' },
-        { name: 'Django', level: 80, color: 'bg-green-700' },
-        { name: 'PostgreSQL', level: 85, color: 'bg-blue-700' },
-        { name: 'MongoDB', level: 80, color: 'bg-green-500' },
-        { name: 'Redis', level: 75, color: 'bg-red-500' },
-        { name: 'GraphQL', level: 70, color: 'bg-pink-600' }
-      ]
-    },
-    mobile: {
-      title: 'Mobile Development',
-      icon: '📱',
-      skills: [
-        { name: 'React Native', level: 85, color: 'bg-blue-500' },
-        { name: 'Flutter', level: 80, color: 'bg-blue-400' },
-        { name: 'Swift', level: 70, color: 'bg-orange-500' },
-        { name: 'Kotlin', level: 75, color: 'bg-purple-600' },
-        { name: 'Ionic', level: 70, color: 'bg-blue-600' },
-        { name: 'Xamarin', level: 65, color: 'bg-blue-700' }
-      ]
-    },
-    tools: {
-      title: 'Tools & Technologies',
-      icon: '🛠️',
-      skills: [
-        { name: 'Git', level: 90, color: 'bg-orange-600' },
-        { name: 'Docker', level: 80, color: 'bg-blue-500' },
-        { name: 'AWS', level: 75, color: 'bg-orange-500' },
-        { name: 'Firebase', level: 85, color: 'bg-yellow-500' },
-        { name: 'Vercel', level: 90, color: 'bg-gray-800' },
-        { name: 'Figma', level: 80, color: 'bg-purple-500' },
-        { name: 'VS Code', level: 95, color: 'bg-blue-600' },
-        { name: 'Linux', level: 85, color: 'bg-yellow-600' }
-      ]
-    }
-  };
+  useEffect(() => {
+    const fetchSkills = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await apiService.getSkills();
+        setSkills(Array.isArray(data) ? data : []);
+      } catch (e) {
+        console.error('Error fetching skills:', e);
+        setError('Failed to load skills');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSkills();
+  }, []);
+
+  const skillCategories = useMemo(() => {
+    const normalizeLevel = (v) => {
+      const n = Number(v);
+      if (Number.isFinite(n)) return Math.max(0, Math.min(100, n));
+      return 0;
+    };
+
+    const colorFor = (category) => {
+      switch (category) {
+        case 'framework':
+          return 'bg-blue-500';
+        case 'language':
+          return 'bg-yellow-500';
+        case 'tool':
+          return 'bg-emerald-500';
+        case 'design':
+          return 'bg-pink-500';
+        default:
+          return 'bg-gray-600';
+      }
+    };
+
+    const grouped = {
+      framework: { title: 'Frameworks', icon: '💻', skills: [] },
+      language: { title: 'Languages', icon: '🧠', skills: [] },
+      tool: { title: 'Tools', icon: '🛠️', skills: [] },
+      design: { title: 'Design', icon: '🎨', skills: [] },
+      other: { title: 'Other', icon: '✨', skills: [] },
+    };
+
+    skills.forEach((s) => {
+      const cat = s.category || 'other';
+      const bucket = grouped[cat] || grouped.other;
+      bucket.skills.push({
+        name: s.name,
+        level: normalizeLevel(s.proficiency_level),
+        color: colorFor(cat),
+      });
+    });
+
+    return grouped;
+  }, [skills]);
 
   const categories = Object.keys(skillCategories);
+
+  useEffect(() => {
+    // Ensure activeCategory always points to an existing bucket
+    if (!skillCategories[activeCategory]) {
+      const first = categories[0];
+      if (first) setActiveCategory(first);
+    }
+  }, [activeCategory, categories, skillCategories]);
+
+  if (loading) return <FullPageLoader message="Loading skills..." />;
+  if (error) return <FullPageError title="Error Loading Skills" message={error} onRetry={() => window.location.reload()} />;
 
   return (
     <div className="min-h-screen pt-16 w-full">
@@ -105,10 +125,10 @@ const Skills = () => {
           {/* Skills Grid */}
           <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg p-8">
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-8 text-center">
-              {skillCategories[activeCategory].title}
+              {(skillCategories[activeCategory] || skillCategories[categories[0]]).title}
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {skillCategories[activeCategory].skills.map((skill, index) => (
+              {(skillCategories[activeCategory] || skillCategories[categories[0]]).skills.map((skill, index) => (
                 <div key={index} className="space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="font-semibold text-gray-900 dark:text-white">{skill.name}</span>

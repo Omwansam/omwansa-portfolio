@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { apiService } from '../services';
 import { FaLinkedin, FaGithub, FaTwitter, FaInstagram, FaWhatsapp, FaGlobe } from 'react-icons/fa';
+import FullPageLoader from '../components/FullPageLoader';
 
 const Contact = () => {
   const [formData, setFormData] = useState({
@@ -30,6 +31,10 @@ const Contact = () => {
     };
     fetchProfile();
   }, []);
+
+  if (loadingProfile) {
+    return <FullPageLoader message="Loading contact page..." />;
+  }
 
   const handleChange = (e) => {
     setFormData({

@@ -1,137 +1,52 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { apiService } from '../services';
+import FullPageLoader from '../components/FullPageLoader';
+import FullPageError from '../components/FullPageError';
 
 const Blog = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [blogPosts, setBlogPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const blogPosts = [
-    {
-      id: 1,
-      title: 'Building Scalable React Applications: Best Practices and Patterns',
-      excerpt: 'Learn how to structure large React applications for maintainability and scalability. We\'ll cover component architecture, state management, and performance optimization techniques.',
-      content: 'Full article content here...',
-      author: 'Omwansa Arnold',
-      date: '2024-01-15',
-      readTime: '8 min read',
-      category: 'React',
-      tags: ['React', 'JavaScript', 'Architecture', 'Performance'],
-      featured: true,
-      image: '💻',
-      slug: 'building-scalable-react-applications'
-    },
-    {
-      id: 2,
-      title: 'The Future of Web Development: Trends to Watch in 2024',
-      excerpt: 'Explore the latest trends shaping web development in 2024, from AI integration to new frameworks and tools that are revolutionizing how we build web applications.',
-      content: 'Full article content here...',
-      author: 'Omwansa Arnold',
-      date: '2024-01-10',
-      readTime: '6 min read',
-      category: 'Web Development',
-      tags: ['Web Development', 'Trends', 'AI', 'Frameworks'],
-      featured: true,
-      image: '🚀',
-      slug: 'future-web-development-trends-2024'
-    },
-    {
-      id: 3,
-      title: 'Mastering Node.js: Advanced Patterns and Performance Optimization',
-      excerpt: 'Dive deep into advanced Node.js patterns, including event loops, clustering, and performance optimization techniques for high-traffic applications.',
-      content: 'Full article content here...',
-      author: 'Omwansa Arnold',
-      date: '2024-01-05',
-      readTime: '10 min read',
-      category: 'Backend',
-      tags: ['Node.js', 'Performance', 'Backend', 'JavaScript'],
-      featured: false,
-      image: '⚙️',
-      slug: 'mastering-nodejs-advanced-patterns'
-    },
-    {
-      id: 4,
-      title: 'CSS Grid vs Flexbox: When to Use Which Layout Method',
-      excerpt: 'A comprehensive comparison of CSS Grid and Flexbox, with practical examples and guidelines for choosing the right layout method for your projects.',
-      content: 'Full article content here...',
-      author: 'Omwansa Arnold',
-      date: '2023-12-28',
-      readTime: '7 min read',
-      category: 'CSS',
-      tags: ['CSS', 'Grid', 'Flexbox', 'Layout'],
-      featured: false,
-      image: '🎨',
-      slug: 'css-grid-vs-flexbox-comparison'
-    },
-    {
-      id: 5,
-      title: 'Getting Started with Docker: Containerization for Developers',
-      excerpt: 'Learn the fundamentals of Docker and how to containerize your applications for easier deployment and scaling in modern development workflows.',
-      content: 'Full article content here...',
-      author: 'Omwansa Arnold',
-      date: '2023-12-20',
-      readTime: '9 min read',
-      category: 'DevOps',
-      tags: ['Docker', 'DevOps', 'Containers', 'Deployment'],
-      featured: false,
-      image: '🐳',
-      slug: 'getting-started-docker-containerization'
-    },
-    {
-      id: 6,
-      title: 'Building RESTful APIs with Express.js: A Complete Guide',
-      excerpt: 'Step-by-step guide to building robust RESTful APIs using Express.js, including authentication, validation, error handling, and testing strategies.',
-      content: 'Full article content here...',
-      author: 'Omwansa Arnold',
-      date: '2023-12-15',
-      readTime: '12 min read',
-      category: 'Backend',
-      tags: ['Express.js', 'API', 'REST', 'Backend'],
-      featured: false,
-      image: '🔗',
-      slug: 'building-restful-apis-expressjs'
-    },
-    {
-      id: 7,
-      title: 'Modern JavaScript Features Every Developer Should Know',
-      excerpt: 'Explore the latest JavaScript features including ES2023 additions, async/await patterns, and modern syntax that can improve your code quality.',
-      content: 'Full article content here...',
-      author: 'Omwansa Arnold',
-      date: '2023-12-10',
-      readTime: '8 min read',
-      category: 'JavaScript',
-      tags: ['JavaScript', 'ES6+', 'Modern JS', 'Features'],
-      featured: false,
-      image: '📜',
-      slug: 'modern-javascript-features-2023'
-    },
-    {
-      id: 8,
-      title: 'Database Design Best Practices for Web Applications',
-      excerpt: 'Learn essential database design principles, normalization techniques, and optimization strategies for building efficient web applications.',
-      content: 'Full article content here...',
-      author: 'Omwansa Arnold',
-      date: '2023-12-05',
-      readTime: '11 min read',
-      category: 'Database',
-      tags: ['Database', 'SQL', 'Design', 'Optimization'],
-      featured: false,
-      image: '🗄️',
-      slug: 'database-design-best-practices'
-    }
-  ];
+  useEffect(() => {
+    const fetchBlogs = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const posts = await apiService.getBlogPosts({ published: true });
+        setBlogPosts(Array.isArray(posts) ? posts : []);
+      } catch (e) {
+        console.error('Error fetching blog posts:', e);
+        setError('Failed to load blog posts');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchBlogs();
+  }, []);
 
-  const categories = ['all', 'React', 'Web Development', 'Backend', 'CSS', 'DevOps', 'JavaScript', 'Database'];
+  const categories = useMemo(() => {
+    const tags = new Set();
+    blogPosts.forEach((p) => (p.tags || []).forEach((t) => tags.add(t)));
+    return ['all', ...Array.from(tags).sort()];
+  }, [blogPosts]);
 
   const filteredPosts = blogPosts.filter(post => {
-    const matchesCategory = selectedCategory === 'all' || post.category === selectedCategory;
+    const matchesCategory = selectedCategory === 'all' || (post.tags || []).includes(selectedCategory);
     const matchesSearch = post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         post.excerpt.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         post.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
+                         (post.excerpt || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (post.tags || []).some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
     return matchesCategory && matchesSearch;
   });
 
-  const featuredPosts = blogPosts.filter(post => post.featured);
+  const featuredPosts = blogPosts.slice(0, 2);
   const recentPosts = blogPosts.slice(0, 3);
+
+  if (loading) return <FullPageLoader message="Loading blog posts..." />;
+  if (error) return <FullPageError title="Error Loading Blog" message={error} onRetry={() => window.location.reload()} />;
 
   return (
     <div className="min-h-screen pt-16 w-full">
@@ -173,12 +88,12 @@ const Blog = () => {
               >
                 <div className="p-8">
                   <div className="flex items-center space-x-4 mb-4">
-                    <span className="text-4xl">{post.image}</span>
+                    <span className="text-4xl">📝</span>
                     <div>
                       <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
-                        {post.category}
+                        {(post.tags && post.tags[0]) || 'Blog'}
                       </span>
-                      <div className="text-sm text-gray-500 mt-1">{post.readTime}</div>
+                      <div className="text-sm text-gray-500 mt-1">Article</div>
                     </div>
                   </div>
                   
@@ -196,8 +111,10 @@ const Blog = () => {
                         OA
                       </div>
                       <div>
-                        <div className="text-sm font-semibold text-gray-900">{post.author}</div>
-                        <div className="text-sm text-gray-500">{new Date(post.date).toLocaleDateString()}</div>
+                        <div className="text-sm font-semibold text-gray-900">
+                          {post.author ? `${post.author.first_name || ''} ${post.author.last_name || ''}`.trim() || post.author.username : 'Author'}
+                        </div>
+                        <div className="text-sm text-gray-500">{post.published_at ? new Date(post.published_at).toLocaleDateString() : ''}</div>
                       </div>
                     </div>
                     <div className="text-purple-600 group-hover:text-purple-700 font-semibold">
@@ -257,12 +174,12 @@ const Blog = () => {
               >
                 <div className="p-6">
                   <div className="flex items-center space-x-3 mb-4">
-                    <span className="text-3xl">{post.image}</span>
+                    <span className="text-3xl">📝</span>
                     <div>
                       <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium">
-                        {post.category}
+                        {(post.tags && post.tags[0]) || 'Blog'}
                       </span>
-                      <div className="text-xs text-gray-500 mt-1">{post.readTime}</div>
+                      <div className="text-xs text-gray-500 mt-1">Article</div>
                     </div>
                   </div>
                   
@@ -275,7 +192,7 @@ const Blog = () => {
                   </p>
                   
                   <div className="flex flex-wrap gap-1 mb-4">
-                    {post.tags.slice(0, 3).map((tag, idx) => (
+                    {(post.tags || []).slice(0, 3).map((tag, idx) => (
                       <span
                         key={idx}
                         className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs"
@@ -287,7 +204,7 @@ const Blog = () => {
                   
                   <div className="flex items-center justify-between">
                     <div className="text-sm text-gray-500">
-                      {new Date(post.date).toLocaleDateString()}
+                      {post.published_at ? new Date(post.published_at).toLocaleDateString() : ''}
                     </div>
                     <div className="text-purple-600 group-hover:text-purple-700 font-semibold text-sm">
                       Read →

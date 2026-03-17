@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import { apiService } from '../services';
+import FullPageLoader from '../components/FullPageLoader';
+import FullPageError from '../components/FullPageError';
 
 const BlogPost = () => {
   const { slug } = useParams();
@@ -7,296 +10,27 @@ const BlogPost = () => {
   const [readingProgress, setReadingProgress] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
   const [likes, setLikes] = useState(0);
-
-  // Mock blog post data - in real app, this would come from API
-  const blogPost = {
-    id: 1,
-    title: 'Building Scalable React Applications: Best Practices and Patterns',
-    slug: 'building-scalable-react-applications',
-    excerpt: 'Learn how to structure large React applications for maintainability and scalability. We\'ll cover component architecture, state management, and performance optimization techniques.',
-    content: `
-# Building Scalable React Applications: Best Practices and Patterns
-
-Building large-scale React applications requires careful planning and adherence to proven patterns. In this comprehensive guide, we'll explore the essential strategies for creating maintainable, performant, and scalable React applications.
-
-## Table of Contents
-1. [Component Architecture](#component-architecture)
-2. [State Management](#state-management)
-3. [Performance Optimization](#performance-optimization)
-4. [Code Organization](#code-organization)
-5. [Testing Strategies](#testing-strategies)
-
-## Component Architecture
-
-### 1. Component Composition
-
-The key to scalable React applications lies in proper component composition. Here are the fundamental principles:
-
-\`\`\`jsx
-// Good: Composable components
-const Card = ({ children, className = "" }) => (
-  <div className={\`bg-white rounded-lg shadow-md p-6 \${className}\`}>
-    {children}
-  </div>
-);
-
-const CardHeader = ({ title, subtitle }) => (
-  <div className="mb-4">
-    <h3 className="text-xl font-semibold text-gray-900">{title}</h3>
-    {subtitle && <p className="text-gray-600">{subtitle}</p>}
-  </div>
-);
-
-const CardContent = ({ children }) => (
-  <div className="text-gray-700">{children}</div>
-);
-
-// Usage
-<Card>
-  <CardHeader title="User Profile" subtitle="Manage your account settings" />
-  <CardContent>
-    <p>Your profile content goes here...</p>
-  </CardContent>
-</Card>
-\`\`\`
-
-### 2. Custom Hooks for Logic Reuse
-
-Custom hooks are essential for sharing logic between components:
-
-\`\`\`jsx
-// Custom hook for API data fetching
-const useApiData = (url) => {
-  const [data, setData] = useState(null);
+  const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchPost = async () => {
       try {
         setLoading(true);
-        const response = await fetch(url);
-        const result = await response.json();
-        setData(result);
-      } catch (err) {
-        setError(err);
+        setError(null);
+        const data = await apiService.getBlogPostBySlug(slug);
+        setPost(data);
+        setLikes(0);
+      } catch (e) {
+        console.error('Error fetching blog post:', e);
+        setError('Failed to load blog post');
       } finally {
         setLoading(false);
       }
     };
-
-    fetchData();
-  }, [url]);
-
-  return { data, loading, error };
-};
-\`\`\`
-
-## State Management
-
-### 1. Context API for Global State
-
-For applications that don't require complex state management, the Context API is often sufficient:
-
-\`\`\`jsx
-// Theme Context
-const ThemeContext = createContext();
-
-export const ThemeProvider = ({ children }) => {
-  const [theme, setTheme] = useState('light');
-  
-  const toggleTheme = () => {
-    setTheme(prev => prev === 'light' ? 'dark' : 'light');
-  };
-
-  return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
-      {children}
-    </ThemeContext.Provider>
-  );
-};
-\`\`\`
-
-### 2. Redux Toolkit for Complex State
-
-For larger applications, Redux Toolkit provides excellent developer experience:
-
-\`\`\`jsx
-// Slice definition
-const userSlice = createSlice({
-  name: 'user',
-  initialState: {
-    profile: null,
-    loading: false,
-    error: null
-  },
-  reducers: {
-    setLoading: (state, action) => {
-      state.loading = action.payload;
-    },
-    setProfile: (state, action) => {
-      state.profile = action.payload;
-      state.loading = false;
-    },
-    setError: (state, action) => {
-      state.error = action.payload;
-      state.loading = false;
-    }
-  }
-});
-\`\`\`
-
-## Performance Optimization
-
-### 1. React.memo and useMemo
-
-Optimize re-renders with React.memo and useMemo:
-
-\`\`\`jsx
-const ExpensiveComponent = React.memo(({ data, onUpdate }) => {
-  const processedData = useMemo(() => {
-    return data.map(item => ({
-      ...item,
-      processed: true
-    }));
-  }, [data]);
-
-  return (
-    <div>
-      {processedData.map(item => (
-        <div key={item.id}>{item.name}</div>
-      ))}
-    </div>
-  );
-});
-\`\`\`
-
-### 2. Code Splitting with React.lazy
-
-Implement code splitting for better performance:
-
-\`\`\`jsx
-const LazyComponent = React.lazy(() => import('./LazyComponent'));
-
-const App = () => (
-  <Suspense fallback={<div>Loading...</div>}>
-    <LazyComponent />
-  </Suspense>
-);
-\`\`\`
-
-## Code Organization
-
-### 1. Feature-Based Structure
-
-Organize your code by features rather than file types:
-
-\`\`\`
-src/
-├── features/
-│   ├── auth/
-│   │   ├── components/
-│   │   ├── hooks/
-│   │   ├── services/
-│   │   └── index.js
-│   ├── dashboard/
-│   └── profile/
-├── shared/
-│   ├── components/
-│   ├── hooks/
-│   └── utils/
-└── App.js
-\`\`\`
-
-### 2. Barrel Exports
-
-Use barrel exports for cleaner imports:
-
-\`\`\`jsx
-// features/auth/index.js
-export { LoginForm } from './components/LoginForm';
-export { useAuth } from './hooks/useAuth';
-export { authService } from './services/authService';
-\`\`\`
-
-## Testing Strategies
-
-### 1. Component Testing with React Testing Library
-
-\`\`\`jsx
-import { render, screen, fireEvent } from '@testing-library/react';
-import { Button } from './Button';
-
-test('renders button with correct text', () => {
-  render(<Button>Click me</Button>);
-  expect(screen.getByText('Click me')).toBeInTheDocument();
-});
-
-test('calls onClick when clicked', () => {
-  const handleClick = jest.fn();
-  render(<Button onClick={handleClick}>Click me</Button>);
-  
-  fireEvent.click(screen.getByText('Click me'));
-  expect(handleClick).toHaveBeenCalledTimes(1);
-});
-\`\`\`
-
-### 2. Integration Testing
-
-\`\`\`jsx
-test('user can login successfully', async () => {
-  render(<LoginForm />);
-  
-  fireEvent.change(screen.getByLabelText(/email/i), {
-    target: { value: 'user@example.com' }
-  });
-  fireEvent.change(screen.getByLabelText(/password/i), {
-    target: { value: 'password123' }
-  });
-  
-  fireEvent.click(screen.getByRole('button', { name: /login/i }));
-  
-  await waitFor(() => {
-    expect(screen.getByText(/welcome/i)).toBeInTheDocument();
-  });
-});
-\`\`\`
-
-## Conclusion
-
-Building scalable React applications requires a combination of good architecture, performance optimization, and maintainable code practices. By following these patterns and principles, you can create applications that are not only performant but also easy to maintain and extend.
-
-Remember that scalability is not just about handling large amounts of data or users, but also about maintaining code quality and developer productivity as your team and codebase grow.
-
-## Key Takeaways
-
-- **Component Composition**: Build reusable, composable components
-- **State Management**: Choose the right tool for your application's complexity
-- **Performance**: Optimize with React.memo, useMemo, and code splitting
-- **Organization**: Use feature-based structure and barrel exports
-- **Testing**: Write comprehensive tests for components and user flows
-
-Happy coding! 🚀
-    `,
-    author: {
-      name: 'Omwansa Arnold',
-      bio: 'Full-stack developer passionate about creating innovative web solutions. I specialize in React, Node.js, and modern web technologies.',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
-      social: {
-        twitter: 'https://twitter.com/omwansa_arnold',
-        linkedin: 'https://linkedin.com/in/omwansa-arnold',
-        github: 'https://github.com/omwansa'
-      }
-    },
-    date: '2024-01-15',
-    readTime: '8 min read',
-    category: 'React',
-    tags: ['React', 'JavaScript', 'Architecture', 'Performance', 'Best Practices'],
-    featured: true,
-    image: 'https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=800&h=400&fit=crop',
-    views: 1250,
-    likes: 42
-  };
+    fetchPost();
+  }, [slug]);
 
   // Related posts
   const relatedPosts = [
@@ -354,7 +88,7 @@ Happy coding! 🚀
   // Handle social sharing
   const handleShare = (platform) => {
     const url = window.location.href;
-    const title = blogPost.title;
+    const title = post?.title || '';
     
     let shareUrl = '';
     switch (platform) {
@@ -384,6 +118,10 @@ Happy coding! 🚀
     });
   };
 
+  if (loading) return <FullPageLoader message="Loading blog post..." />;
+  if (error) return <FullPageError title="Error Loading Blog Post" message={error} onRetry={() => window.location.reload()} />;
+  if (!post) return <FullPageError title="Not Found" message="Blog post not found." onRetry={() => navigate('/blog')} />;
+
   return (
     <div className="min-h-screen pt-16 bg-gray-50 dark:bg-gray-900">
       {/* Reading Progress Bar */}
@@ -406,35 +144,32 @@ Happy coding! 🚀
 
             {/* Title */}
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
-              {blogPost.title}
+              {post.title}
             </h1>
 
             {/* Excerpt */}
             <p className="text-xl text-gray-200 mb-8 max-w-3xl mx-auto leading-relaxed">
-              {blogPost.excerpt}
+              {post.excerpt}
             </p>
 
             {/* Meta Information */}
             <div className="flex flex-wrap items-center justify-center gap-6 text-gray-200">
               <div className="flex items-center">
-                <img 
-                  src={blogPost.author.avatar} 
-                  alt={blogPost.author.name}
-                  className="w-10 h-10 rounded-full mr-3"
-                />
                 <div>
-                  <p className="font-medium text-white">{blogPost.author.name}</p>
-                  <p className="text-sm">{formatDate(blogPost.date)}</p>
+                  <p className="font-medium text-white">
+                    {post.author ? `${post.author.first_name || ''} ${post.author.last_name || ''}`.trim() || post.author.username : 'Author'}
+                  </p>
+                  <p className="text-sm">{post.published_at ? formatDate(post.published_at) : ''}</p>
                 </div>
               </div>
               <div className="flex items-center gap-4">
                 <span className="flex items-center">
                   <span className="mr-1">⏱️</span>
-                  {blogPost.readTime}
+                  Article
                 </span>
                 <span className="flex items-center">
                   <span className="mr-1">👁️</span>
-                  {blogPost.views} views
+                  {post.views} views
                 </span>
               </div>
             </div>
@@ -451,17 +186,21 @@ Happy coding! 🚀
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
                 {/* Featured Image */}
                 <div className="aspect-video bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900 dark:to-purple-900 flex items-center justify-center">
-                  <img 
-                    src={blogPost.image} 
-                    alt={blogPost.title}
-                    className="w-full h-full object-cover"
-                  />
+                  {post.featured_image ? (
+                    <img
+                      src={apiService.getFullImageUrl(post.featured_image)}
+                      alt={post.title}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="text-5xl">📝</div>
+                  )}
                 </div>
 
                 {/* Article Body */}
                 <div className="p-8 lg:p-12">
                   <div className="prose prose-lg dark:prose-invert max-w-none">
-                    {blogPost.content.split('\n').map((paragraph, index) => {
+                    {(post.content || '').split('\n').map((paragraph, index) => {
                       if (paragraph.startsWith('# ')) {
                         return (
                           <h1 key={index} className="text-3xl font-bold text-gray-900 dark:text-white mb-6 mt-8">
@@ -499,7 +238,7 @@ Happy coding! 🚀
                   <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700">
                     <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">Tags</h4>
                     <div className="flex flex-wrap gap-2">
-                      {blogPost.tags.map((tag, index) => (
+                      {(post.tags || []).map((tag, index) => (
                         <span 
                           key={index}
                           className="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-sm rounded-full"
@@ -561,36 +300,12 @@ Happy coding! 🚀
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 mb-8">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">About the Author</h3>
                 <div className="text-center">
-                  <img 
-                    src={blogPost.author.avatar} 
-                    alt={blogPost.author.name}
-                    className="w-20 h-20 rounded-full mx-auto mb-4"
-                  />
-                  <h4 className="font-semibold text-gray-900 dark:text-white mb-2">{blogPost.author.name}</h4>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{blogPost.author.bio}</p>
-                  <div className="flex justify-center gap-3">
-                    <a 
-                      href={blogPost.author.social.twitter}
-                      className="p-2 bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
-                      title="Twitter"
-                    >
-                      🐦
-                    </a>
-                    <a 
-                      href={blogPost.author.social.linkedin}
-                      className="p-2 bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
-                      title="LinkedIn"
-                    >
-                      💼
-                    </a>
-                    <a 
-                      href={blogPost.author.social.github}
-                      className="p-2 bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
-                      title="GitHub"
-                    >
-                      🐙
-                    </a>
+                  <div className="w-20 h-20 rounded-full mx-auto mb-4 bg-gradient-to-br from-blue-600 to-purple-600 text-white flex items-center justify-center text-2xl font-bold">
+                    OA
                   </div>
+                  <h4 className="font-semibold text-gray-900 dark:text-white mb-2">
+                    {post.author ? `${post.author.first_name || ''} ${post.author.last_name || ''}`.trim() || post.author.username : 'Author'}
+                  </h4>
                 </div>
               </div>
 

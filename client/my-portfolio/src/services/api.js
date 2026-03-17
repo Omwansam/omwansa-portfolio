@@ -322,6 +322,10 @@ class ApiService {
     return this.request(`/blog/${blogId}`);
   }
 
+  async getBlogPostBySlug(slug) {
+    return this.request(`/blog/${slug}`);
+  }
+
   async createBlogPost(blogData) {
     return this.request('/blog', {
       method: 'POST',

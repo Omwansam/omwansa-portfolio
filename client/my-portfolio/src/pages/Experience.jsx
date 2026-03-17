@@ -1,117 +1,56 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { apiService } from '../services';
+import FullPageLoader from '../components/FullPageLoader';
+import FullPageError from '../components/FullPageError';
 
 const Experience = () => {
   const [activeTab, setActiveTab] = useState('work');
+  const [experiences, setExperiences] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const workExperience = [
-    {
-      id: 1,
-      title: 'Senior Full-Stack Developer',
-      company: 'TechCorp Solutions',
-      location: 'Nairobi, Kenya',
-      period: '2022 - Present',
-      type: 'Full-time',
-      description: 'Leading development of enterprise-scale web applications and mentoring junior developers.',
-      achievements: [
-        'Led a team of 5 developers in building a customer management system',
-        'Improved application performance by 40% through code optimization',
-        'Implemented CI/CD pipelines reducing deployment time by 60%',
-        'Mentored 3 junior developers and conducted code reviews'
-      ],
-      technologies: ['React', 'Node.js', 'PostgreSQL', 'AWS', 'Docker', 'Kubernetes'],
-      logo: '🏢'
-    },
-    {
-      id: 2,
-      title: 'Full-Stack Developer',
-      company: 'Digital Innovations Ltd',
-      location: 'Nairobi, Kenya',
-      period: '2020 - 2022',
-      type: 'Full-time',
-      description: 'Developed and maintained multiple web applications for various clients across different industries.',
-      achievements: [
-        'Built 15+ web applications from scratch',
-        'Reduced client onboarding time by 50%',
-        'Implemented responsive designs for mobile-first approach',
-        'Collaborated with design team to create intuitive user interfaces'
-      ],
-      technologies: ['Vue.js', 'Express.js', 'MongoDB', 'Firebase', 'Tailwind CSS'],
-      logo: '💼'
-    },
-    {
-      id: 3,
-      title: 'Frontend Developer',
-      company: 'StartupHub Kenya',
-      location: 'Nairobi, Kenya',
-      period: '2019 - 2020',
-      type: 'Full-time',
-      description: 'Focused on creating modern, responsive user interfaces for startup clients.',
-      achievements: [
-        'Developed 20+ responsive websites',
-        'Improved user engagement by 35% through better UX',
-        'Worked with 10+ startup clients',
-        'Learned agile development methodologies'
-      ],
-      technologies: ['React', 'JavaScript', 'CSS3', 'HTML5', 'Bootstrap'],
-      logo: '🚀'
-    },
-    {
-      id: 4,
-      title: 'Junior Web Developer',
-      company: 'WebCraft Studios',
-      location: 'Nairobi, Kenya',
-      period: '2018 - 2019',
-      type: 'Full-time',
-      description: 'Started my professional journey building websites and learning modern web technologies.',
-      achievements: [
-        'Built first commercial websites',
-        'Learned version control with Git',
-        'Gained experience in client communication',
-        'Developed problem-solving skills'
-      ],
-      technologies: ['HTML5', 'CSS3', 'JavaScript', 'jQuery', 'PHP'],
-      logo: '🌱'
-    }
-  ];
+  useEffect(() => {
+    const fetchExperience = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await apiService.getExperiences();
+        setExperiences(Array.isArray(data) ? data : []);
+      } catch (e) {
+        console.error('Error fetching experience:', e);
+        setError('Failed to load experience');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchExperience();
+  }, []);
 
-  const freelanceProjects = [
-    {
-      id: 1,
-      title: 'E-commerce Platform',
-      client: 'Fashion Store Kenya',
-      period: '2023',
-      description: 'Built a complete e-commerce solution with payment integration and inventory management.',
-      technologies: ['Next.js', 'Stripe', 'PostgreSQL', 'Tailwind CSS'],
-      status: 'Completed'
-    },
-    {
-      id: 2,
-      title: 'Restaurant Management System',
-      client: 'Bella Vista Restaurant',
-      period: '2023',
-      description: 'Developed a comprehensive system for order management, inventory, and customer tracking.',
-      technologies: ['React', 'Node.js', 'MongoDB', 'Socket.io'],
-      status: 'Completed'
-    },
-    {
-      id: 3,
-      title: 'Real Estate Portal',
-      client: 'PropertyMax Kenya',
-      period: '2022',
-      description: 'Created a property listing platform with advanced search and filtering capabilities.',
-      technologies: ['Vue.js', 'Express.js', 'PostgreSQL', 'Google Maps API'],
-      status: 'Completed'
-    },
-    {
-      id: 4,
-      title: 'Learning Management System',
-      client: 'EduTech Solutions',
-      period: '2022',
-      description: 'Built an online learning platform with video streaming and progress tracking.',
-      technologies: ['React', 'Node.js', 'AWS S3', 'WebRTC'],
-      status: 'Completed'
-    }
-  ];
+  const workExperience = useMemo(() => {
+    const formatPeriod = (start, end, current) => {
+      const startYear = start ? new Date(start).getFullYear() : '';
+      const endYear = end ? new Date(end).getFullYear() : (current ? 'Present' : '');
+      return `${startYear} - ${endYear}`.trim();
+    };
+
+    return experiences.map((e) => ({
+      id: e.id,
+      title: e.position,
+      company: e.company,
+      location: e.location || '',
+      period: formatPeriod(e.start_date, e.end_date, e.current),
+      type: e.current ? 'Current' : 'Previous',
+      description: e.description,
+      achievements: [],
+      technologies: [],
+      logo: e.company_logo || '💼',
+    }));
+  }, [experiences]);
+
+  const freelanceProjects = [];
+
+  if (loading) return <FullPageLoader message="Loading experience..." />;
+  if (error) return <FullPageError title="Error Loading Experience" message={error} onRetry={() => window.location.reload()} />;
 
   return (
     <div className="min-h-screen pt-16 w-full">
@@ -262,6 +201,13 @@ const Experience = () => {
                   </div>
                 </div>
               ))}
+              {freelanceProjects.length === 0 && (
+                <div className="col-span-full text-center py-12">
+                  <div className="text-6xl mb-4">🧾</div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">No freelance projects yet</h3>
+                  <p className="text-gray-600">This section can be populated later.</p>
+                </div>
+              )}
             </div>
           )}
         </div>

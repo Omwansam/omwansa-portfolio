@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { FaMapMarkerAlt, FaCircle, FaLinkedin, FaTwitter, FaGithub, FaInstagram, FaWhatsapp, FaGlobe } from 'react-icons/fa';
 import { apiService } from '../services';
+import FullPageLoader from '../components/FullPageLoader';
+import FullPageError from '../components/FullPageError';
 
 const Home = () => {
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
@@ -12,6 +14,8 @@ const Home = () => {
   const [userProfile, setUserProfile] = useState(null);
   const [portfolioStats, setPortfolioStats] = useState(null);
   const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const carouselRef = useRef(null);
 
   // Create infinite carousel by duplicating projects
@@ -215,6 +219,8 @@ const Home = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        setLoading(true);
+        setError(null);
         // Fetch user profile
         const profile = await apiService.getPublicProfile();
         setUserProfile(profile);
@@ -229,6 +235,10 @@ const Home = () => {
         setProjects(projectsData || []);
       } catch (error) {
         console.error('Error fetching data:', error);
+        setError('Failed to load home page data');
+      }
+      finally {
+        setLoading(false);
       }
     };
     fetchData();
@@ -281,6 +291,9 @@ const Home = () => {
       startAnimation();
     }
   }, [projects.length]);
+
+  if (loading) return <FullPageLoader message="Loading home data..." />;
+  if (error) return <FullPageError title="Error Loading Home Data" message={error} onRetry={() => window.location.reload()} />;
 
   return (
     <>
@@ -652,7 +665,7 @@ const Home = () => {
                     const category = getProjectCategory(project);
                     return (
                       <div 
-                        key={project.id || index} 
+                        key={`${project.id ?? 'proj'}-${index}`} 
                         className="w-80 flex-shrink-0 px-4"
                       >
                         <Link to="/projects" className="block group h-full">
