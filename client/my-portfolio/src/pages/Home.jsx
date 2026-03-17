@@ -711,28 +711,32 @@ const Home = () => {
                               {/* Project Links */}
                               <div className="flex gap-2 mt-auto">
                                 {project.live_url && (
-                                  <a
-                                    href={project.live_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                                  <button
+                                    type="button"
                                     className="flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-xs font-medium"
-                                    onClick={(e) => e.stopPropagation()}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      window.open(project.live_url, '_blank', 'noopener,noreferrer');
+                                    }}
                                   >
                                     <FaGlobe className="text-xs" />
                                     Demo
-                                  </a>
+                                  </button>
                                 )}
                                 {project.github_url && (
-                                  <a
-                                    href={project.github_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                                  <button
+                                    type="button"
                                     className="flex items-center gap-1 text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors text-xs font-medium"
-                                    onClick={(e) => e.stopPropagation()}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      window.open(project.github_url, '_blank', 'noopener,noreferrer');
+                                    }}
                                   >
                                     <FaGithub className="text-xs" />
                                     Code
-                                  </a>
+                                  </button>
                                 )}
                     </div>
                   </div>

@@ -32,10 +32,6 @@ const Contact = () => {
     fetchProfile();
   }, []);
 
-  if (loadingProfile) {
-    return <FullPageLoader message="Loading contact page..." />;
-  }
-
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -176,6 +172,10 @@ const Contact = () => {
     'Consulting',
     'Other'
   ];
+
+  if (loadingProfile) {
+    return <FullPageLoader message="Loading contact page..." />;
+  }
 
   return (
     <div className="min-h-screen pt-16 w-full">
